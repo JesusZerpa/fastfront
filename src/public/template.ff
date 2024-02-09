@@ -1,0 +1,17 @@
+<script setup>
+export [
+	"@/"
+	]
+</script>
+<!-- $stores.store.name-->
+<template
+	name="template-1"
+	f-data='{"titulo":"Componente"}'
+>
+<div>
+	Componente cargado {{titulo}}
+</div>
+</template>
+<script type="text/javascript">
+console.log("DESDE COMPONENTE")
+</script>

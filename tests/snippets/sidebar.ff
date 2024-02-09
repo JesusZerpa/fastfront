@@ -1,0 +1,10 @@
+<template>
+	<div>
+		
+	</div>
+</template>
+<script lang="python">
+class Component:
+	def DATA(self):
+		return {}
+</script>

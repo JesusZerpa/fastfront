@@ -1,0 +1,19 @@
+<script setup lang="python">
+definePageMeta({
+  layout: 'default'
+})
+</script>
+<template>
+	<div>
+		<h1>HOLA MUNDO</h1>
+		<Componente />
+	</div>
+</template>
+<script lang="python">
+class Home(FF.View):
+	"""docstring for Component"""
+	components={
+		"Componente":"/snippets/main/componente"
+	}
+	
+</script>
