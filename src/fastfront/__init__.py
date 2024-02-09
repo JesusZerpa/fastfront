@@ -4,7 +4,6 @@ def reemplazarValores(cadena, datos):
 	patron = RegExp(r"{{\s*(.*?)\s*}}","g");
 	def reemplazo(match, p1):
 		clave = p1.trim();
-		console.log("qqqqqqqq ",datos,clave,"||||",datos[clave])
 		if datos[clave]!=undefined:
 			return datos[clave]
 		else:
@@ -92,7 +91,7 @@ def handler_attr():
 					doc.addEventListener("keydown",click)
 
 
-def build_context(that,data,nodo,template):
+def build_context(that,data,nodo,template,padre={}):
 	context={}
 	data=Object.assign({},data)
 	
@@ -100,7 +99,9 @@ def build_context(that,data,nodo,template):
 		def get_func():
 			return data[name]
 		def set_func(value):
-			console.log("AAAAAAAAAAAA ",value,context)
+			
+			if padre[name]!=undefined:
+				padre[name]=value
 			data[name]=value
 			that.update(context,nodo,template)
 
@@ -136,7 +137,7 @@ def travese(component,datos):
 			travese(comp,datos)
 
 """
-def travese(nodo,context,localdata={}):
+def travese(that,nodo,context,localdata={}):
 
 	for i,attr in nodo.attributes.items():
 		if attr.name.startswith("@"):
@@ -144,11 +145,34 @@ def travese(nodo,context,localdata={}):
 			nodo.addEventListener(attr.name[1:],
 				lambda event: eval("(function(){self=this; "+value+" })").call(context) )
 
+	componente=nodo.getAttribute("f-component")
+	
+	
+
+	if componente:
+		componente=eval("(function(){self=this; return "+componente+" })").call(context)
+		template=that.components[componente].template
+
+
+		data=that.components[componente].data
+
+		for attr in nodo.attributes.values():
+			attr.name
+			attr.value
+			if attr.name.startswith("f-model:"):
+				field=attr.name.split(":")
+
+				data[field[1]]=eval("(function(){self=this; return "+attr.value+" })").call(context)
+
+		
+		context2=build_context(that,data,nodo,template)
+		that.update(context2,nodo,template)
+		
+
 	if len(nodo.children)==0:
 		nodo.innerHTML=reemplazarValores(nodo.innerHTML,localdata)
 	for comp in nodo.children:
-		
-		travese(comp,context,localdata)
+		travese(that,comp,context,localdata)
 
 
 class Component:
@@ -203,9 +227,15 @@ class App:
 			script=doc.scripts[1]
 			template=doc.head.children[1]
 
-			self.dependencies[template.getAttribute("name")]={
+			data=template.getAttribute("f-data")
+			if data:
+				data=JSON.parse(data)
+			else:
+				data={}
+			self.components[template.getAttribute("name")]={
 				"module":module,
-				"template":template,
+				"data":data,
+				"template":template.outerHTML,
 				"setup":setup,
 				"script":script
 			}
@@ -248,7 +278,7 @@ class App:
 
 		name=self.container.getAttribute("component")
 		
-		console.log("jjjjjjjj",self.container)
+		console.log("jjjjjjjj",self.components)
 		
 
 		if name in self.components:
@@ -274,8 +304,10 @@ class App:
 		Vuelve a Dibujar los componentes, cargando el contexto actual en lugar
 		de resetear el contexto
 		"""
+		console.log("kkkkkk",context)
 		doc=document.createElement("div")
 		doc.innerHTML=template
+		console.log("$$$$$$$$$$$$$$$$$$$ ",template)
 		nodo.innerHTML=reemplazarValores(doc.children[0].innerHTML,context)
 		
 
@@ -334,7 +366,6 @@ class App:
 						node_elif=node2.getAttribute("f-elif")
 
 						node_else=node2.getAttribute("f-else")
-						console.log("&&&&&&&&&&&& ",node_else,node2)
 
 
 						if node_elif!=None:
@@ -353,11 +384,9 @@ class App:
 							node2.remove()
 							
 						if node_else!=None:
-							console.log("@@@@@@@@@@@@@")
 							break
 
 					node2=node2.nextSibling
-					console.log("pp",node2)
 						
 		ffors=nodo.querySelectorAll("[f-for]")				
 		for node in ffors:
@@ -376,34 +405,37 @@ class App:
 
 				clon=fnode.cloneNode(True)
 				data={k:k2,v:valor}
-				console.log("gggggggg",context,data)
-				travese(clon,context,data)
+				travese(self,clon,context,data)
 
 
 				node.appendChild(clon)
 			fnode.remove()
 
 
-
-		travese(nodo,context)
+		for node2 in nodo.children:
+			travese(self,node2,context)
 
 
 		# =====================================================
 		# =           Renderizado de subcomponentes           =
 		# =====================================================
-		
+		"""
+		console.log("QQQQQQQQQQQ",node)
 		for sub in doc.querySelectorAll("[f-component]"):
+
 			subcomp=self.components[sub.getAttribute("f-component")]
 			data=subcomp.getAttribute("f-data")
 			store=subcomp.getAttribute("f-store")
+			console.log("PPPPPPPPPPPPPPPP")
 			context={}
 			if data:
 				data=JSON.parse(data)
 			else:
 				data={}
 			console.log("zzzzzzzzz")
-			context=build_context(self,data,sub,subcomp.template)
-			self.update(context,sub,subcomp.template)
+			context2=build_context(self,data,sub,subcomp.template,context)
+			self.update(context2,sub,subcomp.template)
+		"""
 		
 		# ======  End of Renderizado de subcomponentes  =======
 		

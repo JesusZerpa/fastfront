@@ -6,18 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
     <!-- Inicio Cargando  Componentes -->
-    <script type="text/fastfront" src="./template.ff" module="@" ></script>
-    <!-- fin Carga de Componentes-->
     
+    <script type="text/fastfront" src="./template.ff" module="@"  ></script>
+    
+
+
+    <!-- fin Carga de Componentes-->
+    <template name="componente" 
+        f-data='{"titulo_heredado":"por defecto","contador":0}'>
+      <div>
+        Componente {{titulo_heredado}}
+        <div>
+          Cuenta desde componente {{contador}}
+        </div>
+        <button id="boton" 
+            @click="self.contador+=1">Aumentar</button>
+      </div>
+    </template>
     <template 
         name="Application"
         f-data='
-          {"titulo":"prueba2","abierto":false,"iterador":["a","b","c"]}
+          {"titulo":"prueba2","abierto":false,"iterador":["a","b","c"],"contador":0}
           '
         >
         <div>
 
           <h1>Titulo de prueba</h1>
+          <div>
+            Contador externo {{contador}}
+          </div>
           
           <span>{{titulo}}</span>
           
@@ -29,9 +46,17 @@
           </div>
           <div f-for="(k,elem) in self.iterador">
             <div>
-              {{elem}}
+              <div>{{elem}}</div>
+              <div f-component="'componente'">
+                
+              </div>
             </div>
               
+          </div>
+          <div f-component="'componente'" f-model:contador="self.contador">
+          </div>
+
+          <div f-component="'template-1'" >
           </div>
 
           <button id="boton" 
