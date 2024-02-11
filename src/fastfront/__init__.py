@@ -93,17 +93,20 @@ def handler_attr():
 
 def build_context(that,data,nodo,template,padre={}):
     context={}
-    data=Object.assign({"$refs":{},"$stores":that.stores},data)
-    console.log("pppppppppppp",padre,data,nodo)
+    data2=Object.assign({"$refs":{},"$stores":that.stores},data)
+
     def builder(name,data):
         def get_func():
             return data[name]
         def set_func(value):
             console.log("ñññññññññññññññññññññ",padre,data,value,nodo,nodo.idx)
+            console.log("`XXXXXXXXXXXXXXXXXXXXXXXXXX",nodo,nodo.idx)
+            that.render_idx=nodo.idx
             data[name]=value
 
             if padre[name]!=undefined:
                 padre[name]=value
+                return 
             
             that.update(context,nodo,template)
 
@@ -112,7 +115,7 @@ def build_context(that,data,nodo,template,padre={}):
             "set":set_func
             })
     
-    for name in data:
+    for name in data2:
         builder(name,data)
 
         
@@ -126,19 +129,7 @@ class Snippet:
 class View:
     def __init__(self):
         FF.views_instances[self.__class__.__name__]=self
-"""
-def travese(component,datos):
-    if len(component.children)==0:
-        if "{{" in component.innerText and "}}" in component.innerText:
-            cadena=reemplazarValores(component.innerText, datos)
 
-            component.innerText=cadena
-            
-    else:
-        for comp in component.children:
-            travese(comp,datos)
-
-"""
 def travese(that,nodo,context,idx,localdata={},lock=False):
     
     if not lock:
@@ -181,13 +172,25 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
         padre={}
         componente=eval("(function(){self=this; return "+componente+" })").call(context)
         template=that.components[componente].template
-        console.log("TTTTTTTTTT",that.is_mounted,localdata)
+        console.log("NNNNNNNNN",nodo.idx,nodo)
+        if nodo.idx==undefined :
+            that.generate_render_id()
+            nodo.idx=that.render_idx
+        
+
+            if not that.is_mounted:
+                
+                data=that.components[componente].data
+                data=Object.assign({},data)
+                console.log("TTTTTTTTTTTTT",that.states,data)
+                that.states.append(data)
+
         if not that.is_mounted:
-            data=that.components[componente].data
-            data=Object.assign({},data)
-            that.states.append(data)
+            pass#hay que ver porque me lo esta pintando 2 veces, al crear, pienso que es por el travese en el ffor y el child
         else:
-            data=that.states[idx-1]
+            data=that.states[nodo.idx]
+        console.log("KKKKKKKKKKKK",that.states)
+
         binds={}
         for attr in nodo.attributes.values():
             attr.name
@@ -198,14 +201,15 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                     cadena+=f"let {name}={JSON.stringify(localdata[name])};"
                 _str=lambda x:str(x)
 
-                console.log("VVVVVVVVVVV",_str(10),attr.value,"(function(str){self=this; "+cadena+" return "+attr.value+" })")
+             
                 binds[attr.name[1:]]=eval("(function(str){self=this; "+cadena+" return "+attr.value+" })").call(context,_str)
 
             if attr.name.startswith("f-model:"):
                 field=attr.name.split(":")
                 #actualiza la data local del componente al la del contexto superior, esto es asi porque,
                 #gracias al f-model, el superior se debio haber modificado y el componente debe heredar su valor
-                console.log("SSSSSS")
+                console.log("YYYYYYY",field,data)
+                console.log("SSSSSS",context)
                 data[field[1]]=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 padre=context
         
@@ -214,19 +218,22 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             nodo.setAttribute(name,binds[name])
             
 
-        console.log("vvvvvvvvvvv",JSON.stringify(data))
+        
+
         context2=build_context(that,data,nodo,template,padre)
         
-        if nodo.idx==undefined and not that.is_created:
-            that.render_idx+=1
-            nodo.idx=that.render_idx
-        console.log("lllllll",context2,nodo,nodo.idx,idx,that.render_idx)
-        that.update(context2,nodo,template)
+        
+        
+
+        console.log("PPPPPPPPPPPPPPPPPP",nodo,nodo.idx)
+
+
+        that.update(context2,nodo,template) 
     else:
         
         for comp in nodo.children:
-            
-            travese(that,comp,context,idx,localdata,lock)
+            if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
+                travese(that,comp,context,idx,localdata,lock)
         
     # ======  End of Section Subcomponentes  =======
     
@@ -330,7 +337,7 @@ class App:
         # ======  End of Lectura de Componentes  =======
         
         for componente in document.querySelectorAll("template[name]"):
-            console.log("ooooooooooo",componente)
+           
             data=componente.getAttribute("f-data")
             if data:
                 data=JSON.parse(data)
@@ -350,17 +357,18 @@ class App:
             template=self.components[name].template
             data=data
         
-        
+        data=Object.assign({},data)
         self.states.append(data)
-        console.log("UUUUUUUUUUUUUUUU")
         self.container.idx=0
+        
+
+
         context=build_context(self,data,self.container,template)
         
         self.update(context,self.container,template)
         self.is_created=True
 
     def generate_render_id(self):
-        console.log("ooooooooo",self.is_updating,self.render_idx)
         self.render_idx+=1
         return self.render_idx
 
@@ -387,6 +395,7 @@ class App:
 
         doc=document.createElement("div")
         doc.innerHTML=template
+        console.log("WWWWWWWWWWW",nodo,doc.children[0].innerHTML,context,nodo.idx)
         nodo.innerHTML=reemplazarValores(doc.children[0].innerHTML,context)
         finit=doc.children[0].getAttribute("f-init")
 
@@ -531,7 +540,7 @@ class App:
         
                     return data[d]
                 def set_func(value):
-                    
+                    self.render_idx=doc.idx
                     that.update(context,doc,d,value)
 
                 Object.defineProperty(context,d,{

@@ -20,7 +20,7 @@
           Cuenta desde componente {{contador}}
         </div>
         <button id="boton" 
-            @click="console.log('aaaaaaaaaaaaa');self.contador+=1">Aumentar</button>
+            @click="console.log('aaaaaaaaaaaaa\n\n\n');self.contador+=1">Aumentar</button>
       </div>
     </template>
     <template 
@@ -47,7 +47,7 @@
           <div f-for="(k,elem) in self.iterador">
             <div>
               <div>{{elem}}</div>
-              <div f-component="'componente'"  :id="'comp2-'+str(k)" >
+              <div f-component="'componente'"  :id="'comp2-'+str(k+1)" >
                 
               </div>
             </div>
