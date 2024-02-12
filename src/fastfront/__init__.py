@@ -110,21 +110,19 @@ def handler_attr():
 
 def build_context(that,data,nodo,template,padre={}):
     context={"__data__":None}
-    data2=Object.assign({"$refs":{},"$stores":that.stores},data)
+    data2=Object.assign({"$refs":that.refs,"$stores":that.stores},data)
     context={"__data__":data2}
     def builder(name,data):
         def get_func():
             return data[name]
         def set_func(value):
-            console.log("ñññññññññññññññññññññ",padre,data,value,nodo,nodo.idx)
-            console.log("`XXXXXXXXXXXXXXXXXXXXXXXXXX",nodo,nodo.idx)
             that.render_idx=nodo.idx
             data[name]=value
+            data2[name]=value
 
             if padre[name]!=undefined:
                 padre[name]=value
                 return 
-            
             that.update(context,nodo,template)
 
         Object.defineProperty(context,name,{
@@ -147,68 +145,37 @@ class View:
     def __init__(self):
         FF.views_instances[self.__class__.__name__]=self
 
-def travese(that,nodo,context,idx,localdata={},lock=False):
-    
-    if nodo.__proto__.constructor.name=="Text":
-        console.log("ooooo",nodo,[nodo])
-        nodo.nodeValue=reemplazarValores(nodo.nodeValue,Object.assign({},context["__data__"],localdata))
-        return nodo
 
-    if not lock:
-        for attr in nodo.attributes:
-            attr= nodo.attributes[attr]
+def process_api(that,nodo,context,doc=None):
+    if doc:
+        tpl=doc
+    else:
+        tpl=nodo
 
-            if attr.name.startswith("@"):
-                value=attr.value
-               
-                """
-                nodo.addEventListener(attr.name[1:],
-                    lambda event: eval("(function(){self=this; "+value+" })").call(context) )
-                """
-                def evento(event):
-                    return eval("(function(){self=this; "+value+" })").call(context) 
-                nodo.addEventListener(attr.name[1:],evento)
+    fhead=tpl.getAttribute("f-head")
+    ftarget=tpl.getAttribute("f-target")
+    ftrigger=tpl.getAttribute("f-trigger")
     
-
-    componente=nodo.getAttribute("f-component")
-    ref=nodo.getAttribute("f-ref")
-    store=nodo.getAttribute("f-store")
-    specials={}
     
-    if ref:
-        eval("(function(nodo){ this['$refs']["+ref+"]=nodo })").call(context,nodo)
-
-    if store:
-        eval("(function(){ if (this['$store']["+store+"]==undefined){this['$store']["+store+"]={}}else{ throw Error('No se puede crear store ya '"+store+"' ya existia')} })").call(context)
-    
-    if len(nodo.children)==0:
-        console.log("JJJJJJJJJJJJJJJJJJJJJJJJJ",context,localdata, Object.assign({},context["__data__"],localdata) )
-
-        nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
-    
-    fhead=nodo.getAttribute("f-head")
-    ftarget=nodo.getAttribute("f-target")
-    ftrigger=nodo.getAttribute("f-tigger")
-    
-    fget=nodo.getAttribute("f-get")
+    fget=tpl.getAttribute("f-get")
     fget=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fget}"+"})").call(context)
 
 
-    fpost=nodo.getAttribute("f-post")
+    fpost=tpl.getAttribute("f-post")
     fpost=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fpost}"+"})").call(context)
 
-    fpatch=nodo.getAttribute("f-patch")
+    fpatch=tpl.getAttribute("f-patch")
     fpatch=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fpatch}"+"})").call(context)
 
-    fput=nodo.getAttribute("f-put")
+    fput=tpl.getAttribute("f-put")
     fput=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fput}"+"})").call(context)
 
-    fdelete=nodo.getAttribute("f-delete")
+    fdelete=tpl.getAttribute("f-delete")
     fdelete=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fdelete}"+"})").call(context)
 
-    fswap=nodo.getAttribute("f-swap")#reemplasar elemento, transicion
-    fload=nodo.getAttribute("f-load")#spinner
-    console.log("MMMMMMMMMMMMMM",fget,nodo)
+    fswap=tpl.getAttribute("f-swap")#reemplasar elemento, transicion
+    fload=tpl.getAttribute("f-load")#spinner
+
 
     if fhead:
         fhead=context[fhead]
@@ -219,13 +186,11 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
 
     async def trigger(event):
         if fget!=undefined:
-            console.log("QQQQQQQQQQQQQQQQQQ",fget)
 
             req=await fetch(fget)
             data=await req.json()
             fkey=None
-            console.log("IIIIIIIIIIIIIIIIIIIIIII",nodo.attributes)
-            for attr in nodo.attributes.values():
+            for attr in tpl.attributes.values():
                 attr.name
                 attr.value
                 if attr.name.startswith(":"):
@@ -238,17 +203,16 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                     fkey=attr.value
 
                 if attr.name.startswith("f-response:"):
-                    console.log("KKKKKKKKKK",f"({attr.value})(data,fkey)")
                     field=attr.name.split(":")
                     response=eval(f"({attr.value})").call(None,data,fkey)
-                    console.log("ZZZZZZZZZZ",response)
+
                     context[field[1]]=response
                     
                     if field[2]:
                         response=eval(f"({attr.value})").call(None,data,fkey)#lambda data:data.rows
-                        console.log("ZZZZZZZZZZ",response)
+                        
                         context[field[2]]=response
-                    
+                        
 
 
         elif fpost!=undefined:
@@ -262,7 +226,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             data=await req.json()
             fkey=None
             
-            for attr in nodo.attributes.values():
+            for attr in tpl.attributes.values():
                 attr.name
                 attr.value
 
@@ -294,7 +258,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             data=await req.json()
             fkey=None
             
-            for attr in nodo.attributes.values():
+            for attr in tpl.attributes.values():
                 attr.name
                 attr.value
 
@@ -321,7 +285,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             data=await req.json()
             fkey=None
             
-            for attr in nodo.attributes.values():
+            for attr in tpl.attributes.values():
                 attr.name
                 attr.value
 
@@ -348,7 +312,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             data=await req.json()
             fkey=None
             
-            for attr in nodo.attributes.values():
+            for attr in tpl.attributes.values():
                 attr.name
                 attr.value
 
@@ -364,22 +328,81 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 if attr.name.startswith("f-reponse:"):
                     field=attr.name.split(":")
                     context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
+    
+    if ftrigger!=undefined :
+        
+        ftrigger=eval("(function(){"+f" self=this;return {ftrigger} "+"})").call(context)
+        
 
     if ftrigger==undefined :
         if nodo.triggered==undefined and any([bool(fget),bool(fput),bool(fdelete),bool(fpost)]):
-            console.log("aaaaaaaaaaaaaa",nodo)
-            nodo.addEventListener("click",trigger)
-            nodo.triggered=True
+            
+            tpl.addEventListener("click",trigger)
+            tpl.triggered=True
+    elif ftrigger=="init":
+        if nodo.inited==undefined:
+            trigger()
+            nodo.inited=True
+        
+        
+    pass
+
+def travese(that,nodo,context,idx,localdata={},lock=False):
+    if nodo.__proto__.constructor.name=="Text":
+
+        nodo.nodeValue=reemplazarValores(nodo.nodeValue,Object.assign({},context["__data__"],localdata))
+
+        return nodo
+    if nodo.__proto__.constructor.name=="Comment":
+        return 
+    if not lock:
+        for attr in nodo.attributes:
+            attr= nodo.attributes[attr]
+
+            if attr.name.startswith("@"):
+                value=attr.value
+               
+                """
+                nodo.addEventListener(attr.name[1:],
+                    lambda event: eval("(function(){self=this; "+value+" })").call(context) )
+                """
+                def evento(event):
+                    return eval("(function(){self=this; "+value+" })").call(context) 
+                nodo.addEventListener(attr.name[1:],evento)
+    
+
+    componente=nodo.getAttribute("f-component")
+    ref=nodo.getAttribute("f-ref")
+    store=nodo.getAttribute("f-store")
+    specials={}
+    
+    if ref:
+        eval("(function(nodo){ this['$refs']["+ref+"]=nodo })").call(context,nodo)
+
+    if store:
+        eval("(function(){ if (this['$store']["+store+"]==undefined){this['$store']["+store+"]={}}else{ throw Error('No se puede crear store ya '"+store+"' ya existia')} })").call(context)
+    
+
+    if len(nodo.children)==0:
+        process_api(that,nodo,context)
+        console.log("+++++++++++",nodo, nodo.innerHTML,context["__data__"],localdata,that.states)
+        nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
+        console.log("HHHHHHHHHH",nodo.innerHTML)
+    
+
+    
+
 
     # ==============================================
     # =           Section Subcomponentes           =
     # ==============================================
     
     if componente:
+        console.log("LLLLLLLLLLLL",nodo)
         padre={}
         componente=eval("(function(){self=this; return "+componente+" })").call(context)
         template=that.components[componente].template
-        console.log("NNNNNNNNN",nodo.idx,nodo)
+
         if nodo.idx==undefined :
             that.generate_render_id()
             nodo.idx=that.render_idx
@@ -389,7 +412,6 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 
                 data=that.components[componente].data
                 data=Object.assign({},data)
-                console.log("TTTTTTTTTTTTT",that.states,data)
                 that.states.append(data)
 
         if not that.is_mounted:
@@ -463,18 +485,13 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
 
         context2=build_context(that,data,nodo,template,padre)
         
-        
-        
-
-        console.log("PPPPPPPPPPPPPPPPPP",nodo,nodo.idx)
-
-
         that.update(context2,nodo,template) 
     else:
-        
+        console.log("kkkkkk",nodo,nodo.childNodes)
         for comp in nodo.childNodes:
+            console.log("eeeeeeee",comp.innerHTML)
             if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
-                console.log("DDDDDD",localdata)
+                
                 travese(that,comp,context,idx,localdata,lock)
         
     # ======  End of Section Subcomponentes  =======
@@ -606,7 +623,7 @@ class App:
 
 
         context=build_context(self,data,self.container,template)
-        console.log("qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",self.container)
+
         self.update(context,self.container,template)
         self.is_created=True
 
@@ -629,6 +646,7 @@ class App:
         de resetear el contexto
         """
         that=self
+
         if nodo.idx==undefined:
             nodo.idx=1
             self.render_idx=1
@@ -638,17 +656,18 @@ class App:
 
         doc=document.createElement("div")
         doc.innerHTML=template
+
         
         tpl=doc.children[0]
-       
-        nodo.innerHTML=tpl.innerHTML#reemplazarValores(tpl.innerHTML,context)
         finit=doc.children[0].getAttribute("f-init")
+        nodo.innerHTML=tpl.innerHTML
+        process_api(that,nodo,context,doc.children[0])
 
         if finit:
             eval("(function(){"+f"let self=this;let $stores=self.$stores; return {finit}"+"})").call(context)
         
 
-            
+        
         ifs=nodo.querySelectorAll("[f-if]")
         for node in ifs:
             #conditions[k]=[]
@@ -691,35 +710,41 @@ class App:
                             break
 
                     node2=node2.nextSibling
-                        
+                     
         ffors=nodo.querySelectorAll("[f-for]")              
         for node in ffors:
-            console.log("UUUUUUUUUUUUUUUUUUUUUUUUUU")
             fnode=node.children[0]
             forval=node.getAttribute("f-for")
             elem,iterable=forval.split(" in ")
             iterador=eval("(function(){"+f"self=this; return {iterable}"+"})").call(context)
 
-
-
             if "(" in elem and ")" in elem:
                 k,v=elem.strip()[1:-1].split(",") 
             
-            for k2,valor in enumerate(iterador):
-                
+                for k2,valor in enumerate(iterador):
+                    
 
-                clon=fnode.cloneNode(True)
-                data={k:k2,v:valor}
-                console.log("RRRRRRRRRRRRRRRRR",data)
-                travese(self,clon,context,idx,data,True)
+                    clon=fnode.cloneNode(True)
+                    data={k:k2,v:valor}
+                    travese(self,clon,context,idx,data,True)
+                    node.appendChild(clon)
 
+            else:
+                v=elem.strip() 
+            
+                for valor in iterador:
+                    
 
-                node.appendChild(clon)
+                    clon=fnode.cloneNode(True)
+                    data={v:valor}
+                    travese(self,clon,context,idx,data,True)
+            
+                    node.appendChild(clon)
             fnode.remove()
+        
 
         for node2 in nodo.children:
             travese(self,node2,context,idx,{},False)
-
     
     def process(self,nodo,context):
         """
@@ -772,7 +797,7 @@ class App:
             
                         
 
-            self.process(componente,data)
+            #self.process(componente,data)
             
 
             

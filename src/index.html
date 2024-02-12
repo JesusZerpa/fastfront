@@ -15,7 +15,9 @@
 
     <!-- fin Carga de Componentes-->
     <template name="componente" 
-        f-data='{"titulo_heredado":"por defecto" ,"contador":0}'>
+        f-data='{"titulo_heredado":"por defecto" ,"contador":0}'
+        f-get
+        >
       <div>
         Componente {{ titulo_heredado }}
         <div>
@@ -29,12 +31,15 @@
         name="Application"
         f-data='
           {"titulo":"prueba2","abierto":false,
+            "api_version":null,
             "respuesta":null,"iterador":["a","b","c"],
             "contador":0,
             "rows":[]
           }
           '
-        
+        f-get="BACKEND+'/version-json'"
+        f-response::api_version="(data) => data.version"
+        f-trigger="'init'"
 
         >
 
@@ -42,6 +47,9 @@
           <h1>Titulo de prueba</h1>
           <div>
             Contador externo {{contador}}
+          </div>
+          <div>
+            API {{api_version}}
           </div>
           <div>
             
@@ -55,6 +63,7 @@
           <div f-else>
             cerrado
           </div>
+          
           <div f-for="(k,elem) in self.iterador">
             <div>
               <div>{{elem}}</div>
@@ -70,12 +79,13 @@
 
           <div f-component="'template-1'" id="template-1">
           </div>
+          
           <div f-for="(k,pagina) in self.rows">
             <div>
               Pagina: {{pagina.pagina}}
             </div>
           </div>
-
+        
           <button id="boton" 
             @click="self.abierto=!self.abierto">Presiona</button>
         

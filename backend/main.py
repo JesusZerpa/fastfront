@@ -99,6 +99,14 @@ def template():
 		}
 
 
+@app.get("/version-json")
+def template():
+	return {
+		"title":"Hola mundo",
+		"version":"0.0.1"
+		}
+
+
 #fastapi.build(fastapi)
 app=FrantFront(app)
 #app.load_layouts()
