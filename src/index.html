@@ -6,16 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
     <!-- Inicio Cargando  Componentes -->
-    
+    <script type="text/javascript">
+      window.BACKEND="http://127.0.0.1:8000"
+    </script>
     <script type="text/fastfront" src="./template.ff" module="@"  ></script>
     
 
 
     <!-- fin Carga de Componentes-->
     <template name="componente" 
-        f-data='{"titulo_heredado":"por defecto","contador":0}'>
+        f-data='{"titulo_heredado":"por defecto" ,"contador":0}'>
       <div>
-        Componente {{titulo_heredado}}
+        Componente {{ titulo_heredado }}
         <div>
           Cuenta desde componente {{contador}}
         </div>
@@ -26,8 +28,14 @@
     <template 
         name="Application"
         f-data='
-          {"titulo":"prueba2","abierto":false,"iterador":["a","b","c"],"contador":0}
+          {"titulo":"prueba2","abierto":false,
+            "respuesta":null,"iterador":["a","b","c"],
+            "contador":0,
+            "rows":[]
+          }
           '
+        
+
         >
 
         <div>
@@ -35,8 +43,11 @@
           <div>
             Contador externo {{contador}}
           </div>
+          <div>
+            
+          </div>
           
-          <span>{{titulo}}</span>
+          <span>{{respuesta}}</span>
           
           <div f-if="self.abierto">
             abierto
@@ -59,9 +70,25 @@
 
           <div f-component="'template-1'" id="template-1">
           </div>
+          <div f-for="(k,pagina) in self.rows">
+            <div>
+              Pagina: {{pagina.pagina}}
+            </div>
+          </div>
 
           <button id="boton" 
             @click="self.abierto=!self.abierto">Presiona</button>
+        
+          <button id="boton2" 
+            
+            f-get="BACKEND+'/data-json'"
+            f-response:respuesta:rows="(data) => data.rows"
+
+
+
+            >Obtener</button>
+        
+
         </div>
     </template>
 

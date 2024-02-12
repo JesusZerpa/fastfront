@@ -1,9 +1,12 @@
 from vbuild import render
 from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 class FrantFront:
 	layouts={}
 	snippets={}
-	def __init__(self,main_app,paths:dict):
+	def __init__(self,main_app,paths:dict={}):
 		"""
 		paths={"app":settings.BASE_DIR}
 		"""
@@ -66,14 +69,38 @@ FF.current_#deberia tener la url del archivo
 				bp.get(f"/{app}/snippets/{module}/{layout[:-len('.ff')]}")(lambda: HTMLResponse(self.snippets[(module,snippet)]))
 			else:
 				bp.get(f"/snippets/{module}/{layout[:-len('.ff')]}")(lambda: HTMLResponse(self.snippets[(module,snippet)]))
+	def __call__(self):
+		return self.main_app
+
+from fastapi import FastAPI
+app=FastAPI()
+origins = [
+    "*",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/data-json")
+def template():
+	return {
+		"title":"Hola mundo",
+		"rows":[
+			{"pagina":1},
+			{"pagina":2},
+			{"pagina":3},
+			{"pagina":4},
+			{"pagina":5},
+		],
+		}
 
 
-
-if __name__=="__main__":
-	from fastapi import FastApi
-	fastapi=FastApi()
-	fastapi.build(fastapi)
-	app=FrantFront()
-	app.load_layouts()
-	app.load_components()
+#fastapi.build(fastapi)
+app=FrantFront(app)
+#app.load_layouts()
+#app.load_components()
 

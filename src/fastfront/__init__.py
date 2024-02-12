@@ -1,13 +1,30 @@
 from uuid import v4 as uuidv4 
 
 def reemplazarValores(cadena, datos):
-    patron = RegExp(r"{{\s*(.*?)\s*}}","g");
+    #patron = RegExp(r"{{\s*(.*?)\s*}}","g");
+    patron = RegExp(r"\{\{\s*([^{}.]+(?:\.[^{}.]+)*)\s*\}\}","g");
+    
     def reemplazo(match, p1):
         clave = p1.trim();
-        if datos[clave]!=undefined:
-            return datos[clave]
+        
+        if "." in clave:
+            response=datos
+
+            for elem in clave.split("."):
+                if response[elem]!=undefined:
+                    response=response[elem]
         else:
-            return  match;
+            response=datos[clave]
+
+        if response!=undefined:
+            
+            if typeof(response)=="object":
+                response=JSON.stringify(response)
+
+            return response
+        else:
+            return  "";
+
     resultado = cadena["replace"](patron, reemplazo);
     
     return resultado;
@@ -92,9 +109,9 @@ def handler_attr():
 
 
 def build_context(that,data,nodo,template,padre={}):
-    context={}
+    context={"__data__":None}
     data2=Object.assign({"$refs":{},"$stores":that.stores},data)
-
+    context={"__data__":data2}
     def builder(name,data):
         def get_func():
             return data[name]
@@ -132,6 +149,11 @@ class View:
 
 def travese(that,nodo,context,idx,localdata={},lock=False):
     
+    if nodo.__proto__.constructor.name=="Text":
+        console.log("ooooo",nodo,[nodo])
+        nodo.nodeValue=reemplazarValores(nodo.nodeValue,Object.assign({},context["__data__"],localdata))
+        return nodo
+
     if not lock:
         for attr in nodo.attributes:
             attr= nodo.attributes[attr]
@@ -146,6 +168,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 def evento(event):
                     return eval("(function(){self=this; "+value+" })").call(context) 
                 nodo.addEventListener(attr.name[1:],evento)
+    
 
     componente=nodo.getAttribute("f-component")
     ref=nodo.getAttribute("f-ref")
@@ -159,10 +182,194 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
         eval("(function(){ if (this['$store']["+store+"]==undefined){this['$store']["+store+"]={}}else{ throw Error('No se puede crear store ya '"+store+"' ya existia')} })").call(context)
     
     if len(nodo.children)==0:
-        nodo.innerHTML=reemplazarValores(nodo.innerHTML,localdata)
-    
-    
+        console.log("JJJJJJJJJJJJJJJJJJJJJJJJJ",context,localdata, Object.assign({},context["__data__"],localdata) )
 
+        nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
+    
+    fhead=nodo.getAttribute("f-head")
+    ftarget=nodo.getAttribute("f-target")
+    ftrigger=nodo.getAttribute("f-tigger")
+    
+    fget=nodo.getAttribute("f-get")
+    fget=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fget}"+"})").call(context)
+
+
+    fpost=nodo.getAttribute("f-post")
+    fpost=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fpost}"+"})").call(context)
+
+    fpatch=nodo.getAttribute("f-patch")
+    fpatch=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fpatch}"+"})").call(context)
+
+    fput=nodo.getAttribute("f-put")
+    fput=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fput}"+"})").call(context)
+
+    fdelete=nodo.getAttribute("f-delete")
+    fdelete=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fdelete}"+"})").call(context)
+
+    fswap=nodo.getAttribute("f-swap")#reemplasar elemento, transicion
+    fload=nodo.getAttribute("f-load")#spinner
+    console.log("MMMMMMMMMMMMMM",fget,nodo)
+
+    if fhead:
+        fhead=context[fhead]
+    else:
+        fhead={
+            "Content-Type":"application/json",
+            }
+
+    async def trigger(event):
+        if fget!=undefined:
+            console.log("QQQQQQQQQQQQQQQQQQ",fget)
+
+            req=await fetch(fget)
+            data=await req.json()
+            fkey=None
+            console.log("IIIIIIIIIIIIIIIIIIIIIII",nodo.attributes)
+            for attr in nodo.attributes.values():
+                attr.name
+                attr.value
+                if attr.name.startswith(":"):
+                    cadena=""
+                    for name in localdata:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                    _str=lambda x:str(x)
+
+                if attr.name.startswith("f-key"):
+                    fkey=attr.value
+
+                if attr.name.startswith("f-response:"):
+                    console.log("KKKKKKKKKK",f"({attr.value})(data,fkey)")
+                    field=attr.name.split(":")
+                    response=eval(f"({attr.value})").call(None,data,fkey)
+                    console.log("ZZZZZZZZZZ",response)
+                    context[field[1]]=response
+                    
+                    if field[2]:
+                        response=eval(f"({attr.value})").call(None,data,fkey)#lambda data:data.rows
+                        console.log("ZZZZZZZZZZ",response)
+                        context[field[2]]=response
+                    
+
+
+        elif fpost!=undefined:
+            
+            req=await fetch(fpost,{"method":"POST",
+                "head":fhead,
+                "body":JSON.stringify({
+                    nodo.getAttribute("name"):nodo.getAttribute("value")
+                    })
+                })
+            data=await req.json()
+            fkey=None
+            
+            for attr in nodo.attributes.values():
+                attr.name
+                attr.value
+
+                if attr.name.startswith(":"):
+                    cadena=""
+                    for name in localdata:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                    _str=lambda x:str(x)
+
+                if attr.name.startswith("f-key"):
+                    fkey=attr.value
+
+                if attr.name.startswith("f-reponse:"):
+                    field=attr.name.split(":")
+                    
+                    response=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
+                    
+                    context[field[1]]=response
+                    
+
+
+        elif fpatch!=undefined:
+            req=await fetch(fpatch,{"method":"PATCH",
+                "head":fhead,
+                "body":JSON.stringify({
+                    nodo.getAttribute("name"):nodo.getAttribute("value")
+                    })
+                })
+            data=await req.json()
+            fkey=None
+            
+            for attr in nodo.attributes.values():
+                attr.name
+                attr.value
+
+                if attr.name.startswith(":"):
+                    cadena=""
+                    for name in localdata:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                    _str=lambda x:str(x)
+
+                if attr.name.startswith("f-key"):
+                    fkey=attr.value
+
+                if attr.name.startswith("f-reponse:"):
+                    field=attr.name.split(":")
+                    context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
+                    
+        elif fput!=undefined:
+            req=await fetch(fput,{"method":"PUT",
+                "head":fhead,
+                "body":JSON.stringify({
+                    nodo.getAttribute("name"):nodo.getAttribute("value")
+                    })
+                })
+            data=await req.json()
+            fkey=None
+            
+            for attr in nodo.attributes.values():
+                attr.name
+                attr.value
+
+                if attr.name.startswith(":"):
+                    cadena=""
+                    for name in localdata:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                    _str=lambda x:str(x)
+
+                if attr.name.startswith("f-key"):
+                    fkey=attr.value
+
+                if attr.name.startswith("f-reponse:"):
+                    field=attr.name.split(":")
+                    context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
+                    
+        elif fdelete!=undefined:
+            req=await fetch(fdelete,{"method":"DELETE",
+                "head":fhead,
+                "body":JSON.stringify({
+                    nodo.getAttribute("name"):nodo.getAttribute("value")
+                    })
+                })
+            data=await req.json()
+            fkey=None
+            
+            for attr in nodo.attributes.values():
+                attr.name
+                attr.value
+
+                if attr.name.startswith(":"):
+                    cadena=""
+                    for name in localdata:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                    _str=lambda x:str(x)
+
+                if attr.name.startswith("f-key"):
+                    fkey=attr.value
+
+                if attr.name.startswith("f-reponse:"):
+                    field=attr.name.split(":")
+                    context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
+
+    if ftrigger==undefined :
+        if nodo.triggered==undefined and any([bool(fget),bool(fput),bool(fdelete),bool(fpost)]):
+            console.log("aaaaaaaaaaaaaa",nodo)
+            nodo.addEventListener("click",trigger)
+            nodo.triggered=True
 
     # ==============================================
     # =           Section Subcomponentes           =
@@ -189,7 +396,6 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             pass#hay que ver porque me lo esta pintando 2 veces, al crear, pienso que es por el travese en el ffor y el child
         else:
             data=that.states[nodo.idx]
-        console.log("KKKKKKKKKKKK",that.states)
 
         binds={}
         for attr in nodo.attributes.values():
@@ -208,11 +414,46 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 field=attr.name.split(":")
                 #actualiza la data local del componente al la del contexto superior, esto es asi porque,
                 #gracias al f-model, el superior se debio haber modificado y el componente debe heredar su valor
-                console.log("YYYYYYY",field,data)
-                console.log("SSSSSS",context)
+
                 data[field[1]]=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 padre=context
-        
+
+            if attr.name.startswith("f-text"):#
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.innerText=text
+                pass
+
+            
+            if attr.name=="f-value":
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                data[text]=node.innerText
+                
+
+            if attr.name.startswith("f-html"):
+
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.innerHTML=text
+                pass
+            if attr.name=="f-show":
+
+                _boolean=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                if _boolean:
+                    nodo.style.opacity = "1";
+                else:
+                    nodo.style.opacity = "0";
+            if attr.name=="f-transition":
+                eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.style.opacity = "0";
+
+            if attr.name.startswith("f-action:"):
+                field=attr.name.split(":")
+                if data[field[1]]:
+                    eval("("+attr.value+")").call(context)
+
+            
+
+
+
         for name in binds:
             nodo.removeAttribute(":"+name)
             nodo.setAttribute(name,binds[name])
@@ -231,8 +472,9 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
         that.update(context2,nodo,template) 
     else:
         
-        for comp in nodo.children:
+        for comp in nodo.childNodes:
             if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
+                console.log("DDDDDD",localdata)
                 travese(that,comp,context,idx,localdata,lock)
         
     # ======  End of Section Subcomponentes  =======
@@ -364,7 +606,7 @@ class App:
 
 
         context=build_context(self,data,self.container,template)
-        
+        console.log("qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",self.container)
         self.update(context,self.container,template)
         self.is_created=True
 
@@ -386,6 +628,7 @@ class App:
         Vuelve a Dibujar los componentes, cargando el contexto actual en lugar
         de resetear el contexto
         """
+        that=self
         if nodo.idx==undefined:
             nodo.idx=1
             self.render_idx=1
@@ -395,47 +638,16 @@ class App:
 
         doc=document.createElement("div")
         doc.innerHTML=template
-        console.log("WWWWWWWWWWW",nodo,doc.children[0].innerHTML,context,nodo.idx)
-        nodo.innerHTML=reemplazarValores(doc.children[0].innerHTML,context)
+        
+        tpl=doc.children[0]
+       
+        nodo.innerHTML=tpl.innerHTML#reemplazarValores(tpl.innerHTML,context)
         finit=doc.children[0].getAttribute("f-init")
 
         if finit:
             eval("(function(){"+f"let self=this;let $stores=self.$stores; return {finit}"+"})").call(context)
         
 
-        ftarget=nodo.getAttribute("f-target")
-        ftrigger=nodo.getAttribute("f-tigger")
-        
-        fget=nodo.getAttribute("f-get")
-
-        fpost=nodo.getAttribute("f-post")
-        fpatch=nodo.getAttribute("f-patch")
-        fput=nodo.getAttribute("f-put")
-        fdelete=nodo.getAttribute("f-delete")
-        fswap=nodo.getAttribute("f-swap")#reemplasar elemento, transicion
-        fload=nodo.getAttribute("f-load")#spinner
-
-        if ftrigger==undefined:
-            async def trigger():
-                if fget!=undefined:
-                    req=await fetch(fget)
-                    data=await req.json()
-                elif fpost!=undefined:
-                    
-                    req=await fetch(fget,{"method":"POST",
-                        "body":JSON.stringify({
-                            nodo.getAttribute("name"):nodo.getAttribute("value")
-                            })
-                        })
-
-                elif fpatch!=undefined:
-                    pass
-                elif fput!=undefined:
-                    pass
-                elif fdelete!=undefined:
-                    pass
-
-            nodo.addEventListener("click",trigger)
             
         ifs=nodo.querySelectorAll("[f-if]")
         for node in ifs:
@@ -482,6 +694,7 @@ class App:
                         
         ffors=nodo.querySelectorAll("[f-for]")              
         for node in ffors:
+            console.log("UUUUUUUUUUUUUUUUUUUUUUUUUU")
             fnode=node.children[0]
             forval=node.getAttribute("f-for")
             elem,iterable=forval.split(" in ")
