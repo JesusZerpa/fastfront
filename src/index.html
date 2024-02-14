@@ -8,8 +8,15 @@
     <!-- Inicio Cargando  Componentes -->
     <script type="text/javascript">
       window.BACKEND="http://127.0.0.1:8000"
+
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+
+
     <script type="text/fastfront" src="./template.ff" module="@"  ></script>
+    <script type="text/fastfront" src="./tailwind/accordion.ff" module="@"  ></script>
+    <script type="text/fastfront" src="./tailwind/alert.ff" module="@"  ></script>
     
 
 
@@ -23,18 +30,25 @@
         <div>
           Cuenta desde componente {{contador}}
         </div>
+        
         <button id="boton" 
-            @click="console.log('aaaaaaaaaaaaa\n\n\n');self.contador+=1">Aumentar</button>
+            @click="self.contador+=1">Aumentar</button>
       </div>
     </template>
+
+
     <template 
         name="Application"
         f-data='
-          {"titulo":"prueba2","abierto":false,
+          {"titulo":"prueba2",
+            "abierto":false,
             "api_version":null,
-            "respuesta":null,"iterador":["a","b","c"],
+            "respuesta":null,
+            "iterador":["a","b","c"],
             "contador":0,
-            "rows":[]
+            "rows":[],
+            "campo1":null,
+            "campo2":null
           }
           '
         f-get="BACKEND+'/version-json'"
@@ -52,6 +66,12 @@
             API {{api_version}}
           </div>
           <div>
+          campo1: {{campo1}}
+        </div>
+        <div>
+          campo2: {{campo2}}
+        </div>
+          <div>
             
           </div>
           
@@ -63,8 +83,8 @@
           <div f-else>
             cerrado
           </div>
-          
-          <div f-for="(k,elem) in self.iterador">
+          <div>
+            <div f-for="(k,elem) in self.iterador">
             <div>
               <div>{{elem}}</div>
               <div f-component="'componente'"  :id="'comp2-'+str(k+1)" >
@@ -72,19 +92,23 @@
               </div>
             </div>
               
+          </div>  
           </div>
+          
         
           <div f-component="'componente'" f-model:contador="self.contador">
           </div>
 
           <div f-component="'template-1'" id="template-1">
           </div>
-          
+          <div>
           <div f-for="(k,pagina) in self.rows">
             <div>
               Pagina: {{pagina.pagina}}
             </div>
+          </div>  
           </div>
+          
         
           <button id="boton" 
             @click="self.abierto=!self.abierto">Presiona</button>
@@ -97,9 +121,32 @@
 
 
             >Obtener</button>
+          
+          <form f-ref="'formulario'"   >
+            
+            <input type="text"  name="nombre" f-model="self.campo1" />
+            <input type="date"  name="fecha"  f-model="self.campo2" />
+            
+            <button 
+              
+              f-post="BACKEND+'/formulario-json'"
+              f-form="'formulario'"
+
+              > Enviar </button>
+          </form>
+          <div>
+            <h1>Accordion</h1>
+            <div f-component="'Accordion'"></div>
+          </div>
+          <div>
+            <h1>Alert</h1>
+            <div f-component="'Alert'"></div>
+          </div>
+        
         
 
         </div>
+
     </template>
 
 

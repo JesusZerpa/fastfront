@@ -34,78 +34,78 @@ templates={}
 components={}
 parser=DOMParser()
 
-def handler_attr():
-    for attr in doc:
-        if attr.startswith("f-"):
-
-            match attr:
-                case "f-value":
-                    node=getattr(doc,attr)
-
-                case "f-model":
-                    node=getattr(doc,attr)
-            
-
-        elif attr.startswith("@"):
-            
-            match attr:
-                case "@click":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("click",click)
-                case "@change":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("change",click)
-                case "@focus":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("focus",click)
-                case "@mouseover":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("mouseover",click)
-                case "@mousemose":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("mousemove",click)
-                case "@keyup":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("keyup",click)
-                    
-                case "@keydown":
-                    node=getattr(doc,attr)
-                    def click():
-                        for elem in store:
-                            setattr(this,elem,store[elem])
-                        eval(node)
-
-                    doc.addEventListener("keydown",click)
+#def handler_attr():
+#    for attr in doc:
+#        if attr.startswith("f-"):
+#
+#            match attr:
+#                case "f-value":
+#                    node=getattr(doc,attr)
+#
+#                case "f-model":
+#                    node=getattr(doc,attr)
+#            
+#
+#        elif attr.startswith("@"):
+#            
+#            match attr:
+#                case "@click":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("click",click)
+#                case "@change":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("change",click)
+#                case "@focus":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("focus",click)
+#                case "@mouseover":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("mouseover",click)
+#                case "@mousemose":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("mousemove",click)
+#                case "@keyup":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("keyup",click)
+#                    
+#                case "@keydown":
+#                    node=getattr(doc,attr)
+#                    def click():
+#                        for elem in store:
+#                            setattr(this,elem,store[elem])
+#                        eval(node)
+#
+#                    doc.addEventListener("keydown",click)
 
 
 def build_context(that,data,nodo,template,padre={}):
@@ -114,15 +114,18 @@ def build_context(that,data,nodo,template,padre={}):
     context={"__data__":data2}
     def builder(name,data):
         def get_func():
-            return data[name]
+            return data2[name]
         def set_func(value):
             that.render_idx=nodo.idx
             data[name]=value
             data2[name]=value
+            if name=="campo1":
+                console.log("AAAAAAAAAAAAAAAAAAAAA",data,nodo,padre)
 
             if padre[name]!=undefined:
                 padre[name]=value
                 return 
+            console.log("***************")
             that.update(context,nodo,template)
 
         Object.defineProperty(context,name,{
@@ -155,26 +158,47 @@ def process_api(that,nodo,context,doc=None):
     fhead=tpl.getAttribute("f-head")
     ftarget=tpl.getAttribute("f-target")
     ftrigger=tpl.getAttribute("f-trigger")
-    
-    
-    fget=tpl.getAttribute("f-get")
-    fget=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fget}"+"})").call(context)
-
-
-    fpost=tpl.getAttribute("f-post")
-    fpost=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fpost}"+"})").call(context)
-
-    fpatch=tpl.getAttribute("f-patch")
-    fpatch=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fpatch}"+"})").call(context)
-
-    fput=tpl.getAttribute("f-put")
-    fput=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fput}"+"})").call(context)
-
-    fdelete=tpl.getAttribute("f-delete")
-    fdelete=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {fdelete}"+"})").call(context)
 
     fswap=tpl.getAttribute("f-swap")#reemplasar elemento, transicion
     fload=tpl.getAttribute("f-load")#spinner
+
+    form_type=None
+
+    for attr in tpl.attributes.values():
+        
+        
+        if attr.name.startswith("f-post") or attr.name.startswith("f-get") \
+            or attr.name.startswith("f-put") or attr.name.startswith("f-patch") or attr.name.startswith("f-delete"):
+            
+            value=eval("(function(){"+f" self=this;return {attr.value} "+"})").call(context)
+
+            if attr.name.endswith(".formdata"):
+                form_type="multipart/form-data"
+            elif attr.name.endswith(".urlencoded"):
+                form_type="application/x-www-form-urlencoded"
+            elif attr.name.endswith(".plain"):
+                form_type="text/plain"
+            else:
+                form_type="application/json"
+        if value!=undefined:
+            if attr.name.startswith("f-post"):
+                fpost=value
+            elif attr.name.startswith("f-get"):
+                fget=value
+            elif attr.name.startswith("f-put"):
+                fput=value
+            elif attr.name.startswith("f-patch"):
+                fpatch=value
+            elif attr.name.startswith("f-delete"):
+                fdelete=value
+        if attr.name.startswith(":"):
+            cadena=""
+            for name in localdata:
+                cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+            _str=lambda x:str(x)
+
+
+
 
 
     if fhead:
@@ -183,8 +207,27 @@ def process_api(that,nodo,context,doc=None):
         fhead={
             "Content-Type":"application/json",
             }
+    if form_type:
+        fhead["Content-Type"]=form_type
 
     async def trigger(event):
+        data={}
+        if event!=undefined:
+            event.preventDefault()
+            event.stopPropagation()
+
+            if tpl.getAttribute("f-form"):
+                fform=tpl.getAttribute("f-form")
+                
+                if fform!=undefined and event.target!=undefined:
+                    data=that.process_form(context,event.target)
+            elif tpl.getAttribute("f-payload"):
+                fpayload=tpl.getAttribute("f-payload")
+                
+                if fpayload!=undefined and event.target!=undefined:
+                    data=that.process_payload(context,event.target)
+
+
         if fget!=undefined:
 
             req=await fetch(fget)
@@ -217,12 +260,18 @@ def process_api(that,nodo,context,doc=None):
 
         elif fpost!=undefined:
             
-            req=await fetch(fpost,{"method":"POST",
-                "head":fhead,
-                "body":JSON.stringify({
-                    nodo.getAttribute("name"):nodo.getAttribute("value")
+            if fhead["Content-Type"]=="application/json":
+                req=await fetch(fpost,{"method":"POST",
+                    "head":fhead,
+                    "body":JSON.stringify(data)
                     })
-                })
+            else:
+                req=await fetch(fpost,{"method":"POST",
+                    "head":fhead,
+                    "body":data
+                    })
+
+
             data=await req.json()
             fkey=None
             
@@ -249,12 +298,18 @@ def process_api(that,nodo,context,doc=None):
 
 
         elif fpatch!=undefined:
-            req=await fetch(fpatch,{"method":"PATCH",
-                "head":fhead,
-                "body":JSON.stringify({
-                    nodo.getAttribute("name"):nodo.getAttribute("value")
+            
+            if fhead["Content-Type"]=="application/json":
+                req=await fetch(fpost,{"method":"PATCH",
+                    "head":fhead,
+                    "body":JSON.stringify(data)
                     })
-                })
+            else:
+                req=await fetch(fpost,{"method":"PATCH",
+                    "head":fhead,
+                    "body":data
+                    })
+
             data=await req.json()
             fkey=None
             
@@ -276,12 +331,17 @@ def process_api(that,nodo,context,doc=None):
                     context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
                     
         elif fput!=undefined:
-            req=await fetch(fput,{"method":"PUT",
-                "head":fhead,
-                "body":JSON.stringify({
-                    nodo.getAttribute("name"):nodo.getAttribute("value")
+            
+            if fhead["Content-Type"]=="application/json":
+                req=await fetch(fpost,{"method":"PUT",
+                    "head":fhead,
+                    "body":JSON.stringify(data)
                     })
-                })
+            else:
+                req=await fetch(fpost,{"method":"PUT",
+                    "head":fhead,
+                    "body":data
+                    })
             data=await req.json()
             fkey=None
             
@@ -303,12 +363,17 @@ def process_api(that,nodo,context,doc=None):
                     context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
                     
         elif fdelete!=undefined:
-            req=await fetch(fdelete,{"method":"DELETE",
-                "head":fhead,
-                "body":JSON.stringify({
-                    nodo.getAttribute("name"):nodo.getAttribute("value")
+            
+            if fhead["Content-Type"]=="application/json":
+                req=await fetch(fpost,{"method":"DELETE",
+                    "head":fhead,
+                    "body":JSON.stringify(data)
                     })
-                })
+            else:
+                req=await fetch(fpost,{"method":"DELETE",
+                    "head":fhead,
+                    "body":data
+                    })
             data=await req.json()
             fkey=None
             
@@ -317,6 +382,7 @@ def process_api(that,nodo,context,doc=None):
                 attr.value
 
                 if attr.name.startswith(":"):
+                    console.log("VVVVVVVVVVVVVVVVVV",attr.name)
                     cadena=""
                     for name in localdata:
                         cadena+=f"let {name}={JSON.stringify(localdata[name])};"
@@ -377,17 +443,105 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
     specials={}
     
     if ref:
-        eval("(function(nodo){ this['$refs']["+ref+"]=nodo })").call(context,nodo)
+        console.log("UUUUUUUUUUUUUUUUUUUUUUUUUU",context)
+        eval("(function(nodo){ console.log('6666666666666666666 ',this);this['$refs']["+ref+"]= nodo; })").call(context,nodo)
 
     if store:
         eval("(function(){ if (this['$store']["+store+"]==undefined){this['$store']["+store+"]={}}else{ throw Error('No se puede crear store ya '"+store+"' ya existia')} })").call(context)
     
+    binds={}
+    for attr in nodo.attributes.values():
+        console.log("DDDDDDDDDDDD",attr.name)
+        if attr.name.startswith(":"):
+            cadena=""
+            for name in localdata:
+                cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+
+            _str=lambda x:str(x)
+            console.log("cccccc ",cadena,localdata)
+
+         
+            binds[attr.name[1:]]=eval("(function(str){self=this; "+cadena+" return "+attr.value+" })").call(context,_str)
+
+    for name in binds:
+        nodo.removeAttribute(":"+name)
+        valor=binds[name]
+        accept=[]
+        if valor:
+            if typeof(valor)=="string":
+                accept.append(valor)
+            else:
+                for elem in valor:
+                    if typeof(elem)=="object":
+                        for atrr in elem:
+                            if elem[attr]:
+                                accept.append(attr)
+                    
+                    else:
+                        accept.append(elem)
+                valor=" ".join(accept)
+            nodo.setAttribute(name,valor)
+        
 
     if len(nodo.children)==0:
         process_api(that,nodo,context)
-        console.log("+++++++++++",nodo, nodo.innerHTML,context["__data__"],localdata,that.states)
+        
         nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
-        console.log("HHHHHHHHHH",nodo.innerHTML)
+        
+        binds={}
+        for attr in nodo.attributes.values():
+            if attr.name.startswith("f-model"):
+                
+                value=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.value=value
+                def wrapper(attr):
+        
+                    def change(event):
+        
+                        eval("(function(valor){self=this; "+attr.value+"=valor;console.log('pppppppppp',self) })").call(context,event.target.value)
+                    return change
+                change=wrapper(attr)
+        
+                nodo.addEventListener("change",change)
+
+
+            if attr.name.startswith("f-text"):#
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.innerText=text
+                pass
+            
+            if attr.name=="f-value":
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                data[text]=node.innerText
+                
+
+            if attr.name.startswith("f-html"):
+
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.innerHTML=text
+                pass
+            if attr.name=="f-show":
+
+                _boolean=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                if _boolean:
+                    nodo.style.opacity = "1";
+                else:
+                    nodo.style.opacity = "0";
+            if attr.name=="f-transition":
+                eval("(function(){self=this; return "+attr.value+" })").call(context)
+                nodo.style.opacity = "0";
+
+
+        for name in binds:
+            nodo.removeAttribute(":"+name)
+            nodo.setAttribute(name,binds[name])
+
+            
+
+            
+
+            
+
     
 
     
@@ -427,6 +581,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 cadena=""
                 for name in localdata:
                     cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+
                 _str=lambda x:str(x)
 
              
@@ -440,22 +595,10 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 data[field[1]]=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 padre=context
 
-            if attr.name.startswith("f-text"):#
-                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
-                nodo.innerText=text
-                pass
-
-            
-            if attr.name=="f-value":
-                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
-                data[text]=node.innerText
-                
-
-            if attr.name.startswith("f-html"):
-
-                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
-                nodo.innerHTML=text
-                pass
+            if attr.name.startswith("f-action:"):
+                field=attr.name.split(":")
+                if data[field[1]]:
+                    eval("("+attr.value+")").call(context)
             if attr.name=="f-show":
 
                 _boolean=eval("(function(){self=this; return "+attr.value+" })").call(context)
@@ -467,18 +610,36 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                 eval("(function(){self=this; return "+attr.value+" })").call(context)
                 nodo.style.opacity = "0";
 
-            if attr.name.startswith("f-action:"):
-                field=attr.name.split(":")
-                if data[field[1]]:
-                    eval("("+attr.value+")").call(context)
+        for name in binds:
+            
+            nodo.removeAttribute(":"+name)
+
+            valor=binds[name]
+            if valor:
+                accept=[]
+                console.log("fffffff",valor)
+                if typeof(valor)=="string":
+                    accept.append(valor)
+                else:
+                    for elem in valor:
+                        if typeof(elem)=="object":
+                            for atrr in elem:
+                                if elem[attr]:
+                                    accept.append(attr)
+                        
+                        else:
+                            console.log(">>>>>>>>>>>>>>>><",elem)
+                            accept.extend(elem)
+                valor=" ".join(accept)
+
+                nodo.setAttribute(name,valor)
+            
 
             
 
 
 
-        for name in binds:
-            nodo.removeAttribute(":"+name)
-            nodo.setAttribute(name,binds[name])
+        
             
 
         
@@ -487,7 +648,6 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
         
         that.update(context2,nodo,template) 
     else:
-        console.log("kkkkkk",nodo,nodo.childNodes)
         for comp in nodo.childNodes:
             console.log("eeeeeeee",comp.innerHTML)
             if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
@@ -514,6 +674,7 @@ class App:
     View=View
     Snippet=Snippet
     stores={}
+    refs={}
     dependencies=[]
     components={}
     elifs=[]
@@ -537,6 +698,76 @@ class App:
         if snippets:
             snippets=JSON.parse(snippets)
         that=self
+    async def build_component(self,dependency):
+        body=await dependency.text()
+        doc=parser.parseFromString(body,"text/html")
+        setup="export default []"
+        script=""
+        if doc.scripts:
+            setup=doc.scripts[0].innerText
+            script=doc.scripts[1].innerText
+        
+        __default__=None
+        eval(setup.replace("export default","__default__="))
+        
+        if __default__:
+            for elem in __default__:
+                await self.import_component(elem)
+             
+        for child in doc.head.children:
+            if child.tagName=="TEMPLATE":
+                template=child
+        data=template.getAttribute("f-data")
+        if data:
+            data=JSON.parse(data)
+        else:
+            data={}
+        return template,data,setup,script
+
+    async def import_component(self,importer):
+        scripts=[]
+        dependencies=[]
+        dependencies2=[]
+        names=[]
+        if typeof(importer)=="object":
+            for name, url in importer.items():
+                names.append(name)
+                dependencies2.append(fetch(url))     
+
+        else:
+            scripts.append(importer)
+            
+        for script in scripts:
+            dependencies.append(fetch(script.src))
+        
+        dependencies=await Promise.all(dependencies)
+
+        for k,dependency in enumerate(dependencies):
+            template,data,setup,script=await self.build_component(dependency)
+
+            self.components[template.getAttribute("name")]={
+                #"module":module,
+                "data":data,
+                "template":template.outerHTML,
+                "setup":setup,
+                "script":script
+            }
+
+        dependencies2=await Promise.all(dependencies2)
+
+        for k,dependency in enumerate(dependencies2):
+            console.log("ZZZZZZZZZZZZZ",dependency)
+            template,data,setup,script=await self.build_component(dependency)
+
+            self.components[names[k]]={
+                #"module":module,
+                "data":data,
+                "template":template.outerHTML,
+                "setup":setup,
+                "script":script
+            }
+
+
     async def beforeCreate(self):
         
         dependencies=[]
@@ -552,21 +783,9 @@ class App:
         # ===============================================
         
         for k,dependency in enumerate(dependencies):
-            body=await dependency.text()
-            doc=parser.parseFromString(body,"text/html")
-            
-            module=scripts[k].getAttribute("module")
-            setup=doc.scripts[0]
-            script=doc.scripts[1]
-            template=doc.head.children[1]
-
-            data=template.getAttribute("f-data")
-            if data:
-                data=JSON.parse(data)
-            else:
-                data={}
+            template,data,setup,script=await self.build_component(dependency)
             self.components[template.getAttribute("name")]={
-                "module":module,
+                #"module":module,
                 "data":data,
                 "template":template.outerHTML,
                 "setup":setup,
@@ -635,6 +854,30 @@ class App:
 
     def mount(self):
         self.is_mounted=True
+
+    def process_form(self,context,nodo):
+        form=nodo.getAttribute("f-form")
+        form=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {form}"+"})").call(context)
+        data={}
+        def travese_nodo(nodo):
+            if len(nodo.children)==0:
+                model=nodo.getAttribute("f-model")
+                if model!=undefined:
+                    name=nodo.getAttribute("name")
+                    
+                    value=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {model}"+"})").call(context)
+                    data[name]=value
+
+            for nodo2 in nodo.children:
+                travese_nodo(nodo2)
+        
+        travese_nodo(self.refs[form])
+        return data
+
+    def process_payload(self,context,nodo):
+        form=nodo.getAttribute("f-payload")
+        return eval("(function(){"+f"let self=this;let $stores=self.$stores; return {form}"+"})").call(context)
+        
         
 
             
@@ -662,6 +905,7 @@ class App:
         finit=doc.children[0].getAttribute("f-init")
         nodo.innerHTML=tpl.innerHTML
         process_api(that,nodo,context,doc.children[0])
+
 
         if finit:
             eval("(function(){"+f"let self=this;let $stores=self.$stores; return {finit}"+"})").call(context)
@@ -713,7 +957,7 @@ class App:
                      
         ffors=nodo.querySelectorAll("[f-for]")              
         for node in ffors:
-            fnode=node.children[0]
+            fnode=node
             forval=node.getAttribute("f-for")
             elem,iterable=forval.split(" in ")
             iterador=eval("(function(){"+f"self=this; return {iterable}"+"})").call(context)
@@ -727,7 +971,8 @@ class App:
                     clon=fnode.cloneNode(True)
                     data={k:k2,v:valor}
                     travese(self,clon,context,idx,data,True)
-                    node.appendChild(clon)
+                    clon.removeAttribute("f-for")
+                    node.parentNode.appendChild(clon)
 
             else:
                 v=elem.strip() 
@@ -738,105 +983,12 @@ class App:
                     clon=fnode.cloneNode(True)
                     data={v:valor}
                     travese(self,clon,context,idx,data,True)
-            
-                    node.appendChild(clon)
+                    clon.removeAttribute("f-for")
+                    node.parentNode.appendChild(clon)
             fnode.remove()
-        
 
         for node2 in nodo.children:
             travese(self,node2,context,idx,{},False)
-    
-    def process(self,nodo,context):
-        """
-        procesa los nodos
-        """
-        for name, componente in self.components[name].items():
-            # ===============================================
-            # =           Parseamos el componente           =
-            # ===============================================
-            
-            doc=document.createElement("div")
-            
-        
-            data=componente.getAttribute("f-data")
-            store=componente.getAttribute("f-store")
-
-            if data:
-                data=JSON.parse(data)
-            else:
-                data={}
-            
-
-            name=doc.getAttribute("f-name")
-            self.stores[name]=data
-            context={}
-            if store:
-                self.store[store]=context
-            for d in data:
-                
-                def get_func():
-        
-                    return data[d]
-                def set_func(value):
-                    self.render_idx=doc.idx
-                    that.update(context,doc,d,value)
-
-                Object.defineProperty(context,d,{
-                    "get":get_func,
-                    "set":set_func
-                    })
-            
-
-            init=componente.getAttribute("f-init")
-            if init:
-                eval("\(function\(\){"+f"self=this; {init}"+"}\)").call(self.context)
-
-            
-            
-            # ======  End of Parseamos el componente  =======
-            
-                        
-
-            #self.process(componente,data)
-            
-
-            
-
-                
-            console.log("ppppp",node)
-
-            ffors=componente.querySelectorAll("[f-for]")
-            for node in ffors:
-                forval=node.getAttribute("f-for")
-                elem,iterable=forval.split(" in ")
-                if "(" in elem and ")" in elem:
-                    k,v=elem.strip()[1:-1].split(",") 
-                    console.log("ttttttt ",k,v)
-                    """
-                    for node2 in forval.children:
-                        n1,n2=self.context[iterable].items()
-                        travese(node2,{*self.context,*{k:v,n1:n2}})
-                        self.process(node2,{*self.context,*{k:v,n1:n2}})
-
-                    for n1,n2 in self.context[iterable].items():
-
-
-
-                        k,v=eval("for (let "+elem+" of "+iterable+"){ }").call(self.context)
-                    """
-
-
-            self.lifs[name]=ifs
-
-            elifs=componente.querySelectorAll("[f-elif]")
-            self.elifs[name]=elifs
-
-            elses=componente.querySelectorAll("[f-else]")
-            self.elses[name]=elses
-
-        #Procesado para renderizar las variables embebidas
-        
-        
 
                     
 
@@ -871,13 +1023,6 @@ class App:
     async def run(self,selector):
         self.container=document.querySelector(selector)
         componente=self.container.getAttribute("component")
-        """
-        for name,comp in self.components.items():
-            if name==componente:
-                node.children=[]
-                node.children.append(self.process(comp.template.innerHTML,comp.script))
-                break
-        """
 
         await self.beforeCreate()
         await self.mount()
@@ -890,4 +1035,4 @@ FF.elifs=[]
 FF.elses=[]
 FF.shows=[]
 
-Component2()
+window.FF=FF

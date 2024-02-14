@@ -1,0 +1,33 @@
+<template
+  name="Accordion"
+  f-data='{
+     "tabs":[ {"title":"Tab 1","content":"Sint non nulla fugiat dolore ullamco cillum fugiat duis laborum consectetur reprehenderit sit sint occaecat sed."},
+        {"title":"Tab 2","content":"Sint non nulla fugiat dolore ullamco cillum fugiat duis laborum consectetur reprehenderit sit sint occaecat sed."},
+        {"title":"Tab 3","content":"Sint non nulla fugiat dolore ullamco cillum fugiat duis laborum consectetur reprehenderit sit sint occaecat sed."},
+        {"title":"Tab 4","content":"Sint non nulla fugiat dolore ullamco cillum fugiat duis laborum consectetur reprehenderit sit sint occaecat sed."}]
+
+ }'
+>
+<div class="m-2 space-y-2">
+  <div
+    class="group flex flex-col gap-2 rounded-lg bg-black p-5 text-white"
+    :tabindex="k+1"
+    f-for="(k,tab) in self.tabs"
+  >
+    <div class="flex cursor-pointer items-center justify-between">
+      <span> {{tab.title}} </span>
+      <img
+        :src="tab.image"
+        class="h-2 w-3 transition-all duration-500 group-focus:-rotate-180"
+      />
+    </div>
+    <div
+      class="invisible h-auto max-h-0 items-center opacity-0 transition-all group-focus:visible group-focus:max-h-screen group-focus:opacity-100 group-focus:duration-1000"
+    >
+    {{tab.content}}
+    </div>
+  </div>
+
+
+</div>  
+</template>

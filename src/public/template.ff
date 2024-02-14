@@ -1,7 +1,7 @@
 <script setup>
-export [
-	BACKEND+"/template2.ff",
-	{"template3-alias":BACKEND+"/template3.ff"}
+export default [
+	//BACKEND+"/template2.ff",
+	//{"template3-alias":BACKEND+"/template3.ff"}
 	]
 </script>
 <!-- $stores.store.name-->
