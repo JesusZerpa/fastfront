@@ -1,0 +1,42 @@
+<template>
+	<div class="flex gap-2">
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-blue-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">blue</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-red-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">red</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-green-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">green</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-amber-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-black">
+    <div class="mt-px">amber</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-pink-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">pink</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-indigo-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">indigo</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-purple-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">purple</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-teal-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">teal</div>
+  </div>
+  <div class="center relative inline-block select-none whitespace-nowrap rounded-lg bg-cyan-500 py-2 px-3.5 align-baseline font-sans text-xs font-bold uppercase leading-none text-white">
+    <div class="mt-px">cyan</div>
+  </div>
+</div>
+<div class="w-full pt-5 px-4 mb-8 mx-auto ">
+    <div class="text-sm text-gray-700 py-1">
+        Made with <a class="text-gray-700 font-semibold" href="https://www.material-tailwind.com/docs/html/chip?ref=tailwindcomponents" target="_blank">Material Tailwind</a> by <a href="https://www.creative-tim.com?ref=tailwindcomponents" class="text-gray-700 font-semibold" target="_blank"> Creative Tim</a>.
+    </div>
+</div>
+
+<!-- stylesheet -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/@material-tailwind/html@latest/styles/material-tailwind.css"
+/>
+</template>

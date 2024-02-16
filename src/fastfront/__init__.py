@@ -119,13 +119,9 @@ def build_context(that,data,nodo,template,padre={}):
             that.render_idx=nodo.idx
             data[name]=value
             data2[name]=value
-            if name=="campo1":
-                console.log("AAAAAAAAAAAAAAAAAAAAA",data,nodo,padre)
-
             if padre[name]!=undefined:
                 padre[name]=value
                 return 
-            console.log("***************")
             that.update(context,nodo,template)
 
         Object.defineProperty(context,name,{
@@ -185,6 +181,10 @@ def process_api(that,nodo,context,doc=None):
                 fpost=value
             elif attr.name.startswith("f-get"):
                 fget=value
+            elif attr.name.startswith("f-error"):
+                ferror=value
+            elif attr.name.startswith("f-success"):
+                fsuccess=value
             elif attr.name.startswith("f-put"):
                 fput=value
             elif attr.name.startswith("f-patch"):
@@ -229,9 +229,15 @@ def process_api(that,nodo,context,doc=None):
 
 
         if fget!=undefined:
+            try:
+                req=await fetch(fget)
+                data=await req.json()
+            except Exception as e:
+                if ferror:
+                    eval("(function(){"+f" self=this;{ferror} "+"})").call(context)
+            if fsuccess:
+                eval("(function(data){"+f" self=this;{fsuccess} "+"})").call(context,data)
 
-            req=await fetch(fget)
-            data=await req.json()
             fkey=None
             for attr in tpl.attributes.values():
                 attr.name
@@ -382,7 +388,6 @@ def process_api(that,nodo,context,doc=None):
                 attr.value
 
                 if attr.name.startswith(":"):
-                    console.log("VVVVVVVVVVVVVVVVVV",attr.name)
                     cadena=""
                     for name in localdata:
                         cadena+=f"let {name}={JSON.stringify(localdata[name])};"
@@ -443,42 +448,45 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
     specials={}
     
     if ref:
-        console.log("UUUUUUUUUUUUUUUUUUUUUUUUUU",context)
-        eval("(function(nodo){ console.log('6666666666666666666 ',this);this['$refs']["+ref+"]= nodo; })").call(context,nodo)
+        eval("(function(nodo){ this['$refs']["+ref+"]= nodo; })").call(context,nodo)
 
     if store:
         eval("(function(){ if (this['$store']["+store+"]==undefined){this['$store']["+store+"]={}}else{ throw Error('No se puede crear store ya '"+store+"' ya existia')} })").call(context)
     
     binds={}
     for attr in nodo.attributes.values():
-        console.log("DDDDDDDDDDDD",attr.name)
+        
         if attr.name.startswith(":"):
             cadena=""
             for name in localdata:
                 cadena+=f"let {name}={JSON.stringify(localdata[name])};"
 
             _str=lambda x:str(x)
-            console.log("cccccc ",cadena,localdata)
-
+            
          
             binds[attr.name[1:]]=eval("(function(str){self=this; "+cadena+" return "+attr.value+" })").call(context,_str)
-
+            
     for name in binds:
         nodo.removeAttribute(":"+name)
         valor=binds[name]
         accept=[]
         if valor:
+
             if typeof(valor)=="string":
                 accept.append(valor)
-            else:
+            elif typeof(valor)=="number":
+                accept.append(valor)
+            elif Array.isArray(valor):
                 for elem in valor:
                     if typeof(elem)=="object":
+
                         for atrr in elem:
                             if elem[attr]:
                                 accept.append(attr)
                     
                     else:
                         accept.append(elem)
+
                 valor=" ".join(accept)
             nodo.setAttribute(name,valor)
         
@@ -498,7 +506,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
         
                     def change(event):
         
-                        eval("(function(valor){self=this; "+attr.value+"=valor;console.log('pppppppppp',self) })").call(context,event.target.value)
+                        eval("(function(valor){self=this; "+attr.value+"=valor; })").call(context,event.target.value)
                     return change
                 change=wrapper(attr)
         
@@ -552,7 +560,6 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
     # ==============================================
     
     if componente:
-        console.log("LLLLLLLLLLLL",nodo)
         padre={}
         componente=eval("(function(){self=this; return "+componente+" })").call(context)
         template=that.components[componente].template

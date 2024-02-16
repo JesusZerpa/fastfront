@@ -1,0 +1,62 @@
+<template>
+	<div class="w-full max-w-sm rounded bg-white h-96 m-auto shadow flex flex-col">
+    <div class="mx-8 shadow rounded-full h-10 mt-4 flex p-1 relative items-center">
+        <div class="w-full flex justify-center">
+            <button>Left</button>
+        </div>
+        <div class="w-full flex justify-center">
+            <button>Right</button>
+        </div>
+        <span 
+        class="elSwitch bg-indigo-600 shadow text-white flex items-center justify-center w-1/2 rounded-full h-8 transition-all top-[4px] absolute left-1 ">
+        Text
+        </span>
+    </div>
+
+
+    <div class="mx-8 shadow rounded border h-10 mt-4 flex p-1 relative items-center bg-gray-200">
+        <div class="w-full flex justify-center">
+            <button>Left</button>
+        </div>
+        <div class="w-full flex justify-center">
+            <button>Right</button>
+        </div>
+        <span 
+        class="elSwitch bg-white shadow text-gray-800 flex items-center justify-center w-1/2 rounded h-8 transition-all top-[4px] absolute left-1 ">
+        Text
+        </span>
+    </div>
+
+    <div class="mx-8 shadow rounded border h-10 mt-4 flex p-1 relative items-center bg-gray-200">
+        <div class="w-full flex justify-center">
+            <button>Left</button>
+        </div>
+        <div class="w-full flex justify-center">
+            <button>Right</button>
+        </div>
+        <span 
+        class="elSwitch bg-white shadow text-gray-800 flex items-center justify-center w-1/2 rounded-full h-8 transition-all top-[4px] absolute left-1 ">
+        Text
+        </span>
+    </div>
+
+
+</div>
+
+<script>
+    const elSwitchs = document.querySelectorAll('.elSwitch')
+    elSwitchs.forEach( e => {
+            e.addEventListener('click', function(){
+            if (e.classList.contains('left-[155px]')){
+                e.classList.remove('left-[155px]')
+                e.classList.add('left-1')
+            }else {
+                e.classList.remove('left-1')
+                e.classList.add('left-[155px]')
+            }
+            
+        })
+    } )
+    
+</script>
+</template>
