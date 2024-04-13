@@ -1,0 +1,7 @@
+setup.py
+fastfront/__init__.py
+fastfront/main.py
+fastfront.egg-info/PKG-INFO
+fastfront.egg-info/SOURCES.txt
+fastfront.egg-info/dependency_links.txt
+fastfront.egg-info/top_level.txt
