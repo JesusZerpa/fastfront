@@ -12,14 +12,24 @@ def reemplazarValores(cadena, datos):
             for elem in clave.split("."):
                 if response[elem]!=undefined:
                     response=response[elem]
+            return response
+        elif "[" in clave:
+            clave=clave.strip()
+            result=eval("const { "+",".join(datos.keys())+" } = datos; "+clave)
+            return result
         else:
+
             response=datos[clave]
+            if response!=undefined:
+                return response.toString()
 
         if response!=undefined:
             if typeof(response)=="object":
                 #Esto se hace para evitar la recursividad al hacer
                 # stringify por el attributo $store
+
                 response2=Object.assign({},response)
+
                 del response2["$stores"]
                 response2=JSON.stringify(response2)
                 return response2
@@ -28,7 +38,6 @@ def reemplazarValores(cadena, datos):
 
         else:
             return  "";
-
     resultado = cadena["replace"](patron, reemplazo);
     
     return resultado;
@@ -423,10 +432,6 @@ def process_api(that,nodo,context,localdata,doc=None):
     pass
 def process_for(that,node,context,idx,localdata,lock):
 
-
-    
-
-
     fnode=node
     forval=node.getAttribute("f-for")
     elem,iterable=forval.split(" in ")
@@ -447,7 +452,9 @@ def process_for(that,node,context,idx,localdata,lock):
         k,v=elem.strip()[1:-1].split(",") 
         
         
-        console.log("xxxxxxxxxxxxxxxxx",iterador)
+        console.log("xxxxxxxxxxxxxxxxx",iterador,node,node.parentNode)
+        parent=node.parentNode
+        nuevos=[]
         for k2,valor in enumerate(iterador):
             #localdata[v]=valor    
 
@@ -455,12 +462,18 @@ def process_for(that,node,context,idx,localdata,lock):
             #lo quitamos antes de el travese para que el nodo se
             #procese con process_attr
             clon.removeAttribute("f-for")
-            data={k:k2,v:valor}
+            node.removeAttribute("f-for")
+            console.log(clon.outerHTML)
+            data={k.strip():k2,v.strip():valor}
             data.update(localdata)
-
-            travese(that,clon,context,idx,data,lock)
             #clon.removeAttribute("f-for")
-            node.parentNode.insertBefore(clon,node)
+            travese(that,clon,context,idx,data,lock)
+            parent.insertBefore(clon,node)
+
+        
+            
+        node.remove()
+            
 
 
     else:
@@ -474,9 +487,9 @@ def process_for(that,node,context,idx,localdata,lock):
             data={v:valor}
             data.update(localdata)
 
+            node.parentNode.insertBefore(clon,node)
             travese(that,clon,context,idx,data,lock)
             #clon.removeAttribute("f-for")
-            node.parentNode.insertBefore(clon,node)
             #node.parentNode.appendChild(clon)
     fnode.remove()
 
@@ -488,9 +501,8 @@ def process_attr(that,nodo,context,idx,localdata,lock):
     #nodo,context,idx,data,localdata
     binds={}
      #deberia ser el contexto padre o algo asi ver mas tarde
-    console.log("QQQQQQQQQQQQQQQQQ ",idx)
+
     data=that.states[idx]
-    console.log("fffff",data,nodo)
     #Atributos no componentes
     for attr in nodo.attributes.values():
         cadena=""
@@ -518,9 +530,17 @@ def process_attr(that,nodo,context,idx,localdata,lock):
             eval("(function(){self=this;"+cadena+"; return "+attr.value+" })").call(context)
             nodo.style.opacity = "0";
         
-        if attr.name=="f-if" or  attr.name=="f-elif" or  attr.name=="f-else":
+        if attr.name=="f-if":
             
             process_if(that,nodo,context,idx,localdata)
+            pass
+        if attr.name.startswith("f-model"):
+            field=attr.name.split(":")
+            #actualiza la data local del componente al la del contexto superior, esto es asi porque,
+            #gracias al f-model, el superior se debio haber modificado y el componente debe heredar su valor
+            if nodo.hasAttribute("type")=="checkbox":
+                result=eval("(function(){self=this; return "+attr.value+" })").call(context)
+                console.log("eeeeeee ",result,attr.value)
 
     for name in binds:
         
@@ -645,48 +665,66 @@ def process_attr(that,nodo,context,idx,localdata,lock):
 def process_if(that,node,context,idx,localdata):
     node_if=node.getAttribute("f-if")
     node_elif_before=None
-    console.log("eeeeee ",localdata)
     cadena=""
     for name in localdata:
         cadena+=f"let {name}={JSON.stringify(localdata[name])};"
     
-    console.log(">>>>>>> ","(function(iterador){"+f"let self=this; "+cadena+" let $stores=self.$stores;return {node_if}"+"})")
     valor=eval("(function(iterador){"+f"let self=this;"+cadena+f" let $stores=self.$stores;return {node_if}"+"})").call(context)
-    
+
     condition=valor==True
     node2=node.nextSibling
     if node2 :
         if not valor:
             node.remove()
+            pass
+        else:
+            node.removeAttribute("f-if")
+        
+        
+        
         while node2!=undefined:
             
             if node2.__proto__.constructor.name!="Text":
 
-                node_elif=node2.getAttribute("f-elif")
+                node_elif=node2.hasAttribute("f-elif")
 
-                node_else=node2.getAttribute("f-else")
-
-
-                if node_elif!=None:
-                    valor=eval("(function(iterador){"+f"let self=this;let $stores=self.$stores; let {iterable}=iterador; console.log('bbbbbbb','{iterable}');return {node_elif}"+"})").call(self.context,iterador)
-                    
+                node_else=node2.hasAttribute("f-else")
+                
+                if node_elif:
+                    _elif=node2.getAttribute("f-elif")
+                    valor=eval("(function(iterador){"+f"let self=this;let $stores=self.$stores; let {iterable}=iterador; console.log('bbbbbbb','{iterable}');return {_elif}"+"})").call(self.context,iterador)
+    
                     if not condition and valor==True:
 
                         condition=valor
-
                     else:
-                        node_before=node2
-                        node2=node2.nextSibling
-                        node_before.remove()
-                
-                if condition and node_else!=None:
+                        node2.remove()    
+
+                        
+                elif condition and not node_else:#elif
                     node2.remove()
+                    pass
                     
-                if node_else!=None:
-                    break
+                elif condition and node_else:#else
+                    
+                    node2.remove()
+                    pass
+
+                if condition:
+                    if node2.hasAttribute("f-if"):
+                        node2.removeAttribute("f-if") 
+                    if node2.hasAttribute("f-elif"):
+                        node2.removeAttribute("f-elif")
+                    if node2.hasAttribute("f-else"):
+                        node2.removeAttribute("f-else") 
+                
+                console.log("VVVVVVVVVVVVVV ",node2,[condition,node_elif,node_else]
+                    )
+            if node_else:
+                break
 
             node2=node2.nextSibling
-             
+        
 
 def travese(that,nodo,context,idx,localdata={},lock=False):
     
@@ -773,6 +811,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
         nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
         
         binds={}
+
         if nodo.getAttribute("f-for"):
             # Procesado cuando no hay hijos
             
@@ -866,6 +905,9 @@ class App:
             if child.tagName=="TEMPLATE":
                 template=child
         data=template.getAttribute("f-data")
+
+        data=data["replace"](RegExp(',([^,]*)$'),'$1');
+
         if data:
             data=JSON.parse(data)
         else:
@@ -950,8 +992,10 @@ class App:
         for template in document.querySelectorAll("template[name]"):
             name = template.getAttribute("name")
             data = template.getAttribute("f-data")
+       
             if data:
-                data=JSON.parse(data)
+                data=eval("("+data+")")
+                
             else:
                 data={}
 
@@ -982,10 +1026,10 @@ class App:
 
         data2=self.container.getAttribute("f-data")
         if data2:
-            data2=JSON.stringify(data2)
+            data2=eval("("+data2+")")
+            
         else:
-            data2={} 
-
+            data2={}
         if name in self.components:
             template=self.components[name].template
             data=self.components[name].data
@@ -1019,8 +1063,9 @@ class App:
                 if model!=undefined:
                     name=nodo.getAttribute("name")
                     
-                    value=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {model}"+"})").call(context)
+                    value=eval("(function(){"+f"let self=this;let $stores=self.$stores;console.log('44444444444 ',{model}) return {model}"+"})").call(context)
                     data[name]=value
+                nodo.removeAttribute("f-model")
 
             for nodo2 in nodo.children:
                 travese_nodo(nodo2)

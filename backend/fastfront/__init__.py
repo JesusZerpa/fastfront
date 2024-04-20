@@ -44,6 +44,7 @@ def process_template(cls,content,app=None,blocks={},dependencies=[],settings=Non
     import re
     import json
     from fastfmk import extensions
+    print("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY")
     include_pattern=r"\{%\s*include\s*['\"][\w|\-|_]+['\"]\s*(?:['\"]\w+['\"])?\s*%\}"
     #pattern=r"\{%\s*include\s*(?:\"\w+\")|(?:'\w+')\s*(?:\"\w+\")?\s*%\}"
     #pattern2=r"\{%\s*include\s*((?:\"\w+\")|(?:'\w+'))\s*((?:\"\w+\")|(?:'\w+'))?\s*%\}"
@@ -70,6 +71,11 @@ def process_template(cls,content,app=None,blocks={},dependencies=[],settings=Non
 
     import_pattern=r"\{%\s*?import_components\s*?%\}"
 
+    pattern=r"<[A-Z][a-zA-Z0-9]*[^>]*>"
+    for elem in re.findall(pattern,content):
+        i=elem.find(" ")
+
+        content=content.replace(elem[:i+1],elem[:i]+f" fastfront component='{elem[1:i]}' ")
 
 
     extend_matches=re.findall(extend_pattern,content)
@@ -80,7 +86,7 @@ def process_template(cls,content,app=None,blocks={},dependencies=[],settings=Non
         if not app and match[1]:
             app=json.loads(match[1].replace("'",'"'))
         snippet=json.loads(match[0].replace("'",'"'))
-        print("CCCCCCCCCCCCCC",settings)
+
         content2=explore_snippets(cls,snippet,app,
             dependencies=dependencies,
             settings=settings)
@@ -267,7 +273,6 @@ class FastFront:
 
 
         BASE_DIR=str(settings.BASE_DIR)
-        print("DDDDDDDDDDD ",BASE_DIR+"/"+module+"/templates/"+folder)
         for raiz, directorios, archivos in os.walk(BASE_DIR+"/"+module+"/templates/"+folder):
             url=raiz.replace(BASE_DIR+"/"+module+"/templates/"+folder,"")
             rutas=url.split("/")
@@ -281,18 +286,38 @@ class FastFront:
                             operation_id="auto_"+archivo[:-len(".ff")]):
                             
                             #(user_id, item_id, category) = path_params_extractor(request.url.path)
-                            print("&&&&& ",archivo)
+                            
                             path=request.url.path.split("/")
+                            
                             return FastFront.render(
                                 request,
                                 "/".join([*path[1:-1],archivo[:-len(".ff")]]),
                                 variables={"$params":request.path_params},
                                 settings=settings
                                 )
-                        print("+++++ ","/"+url+"/{"+archivo[1:-len(".ff")]+"}")
+                        
                         app.get("/"+url+"/{"+archivo[1:-len(".ff")]+"}")(
                             auto_route)
+
                     build(archivo)
+                elif archivo=="Index.ff":
+                    def auto_route(
+                        request: Request,
+                        operation_id="auto_"+archivo[:-len(".ff")]):
+                        
+                        path=request.url.path.split("/")
+                        print("wwwww ",path)
+                        print("mmmmmm ","/".join([*path[1:],"Index"]))
+                        return FastFront.render(
+                            request,
+                            "/".join([*path[1:],"Index"]),
+                            app=appname,
+                            settings=settings)
+
+                    print("++++++++++++ ","/"+url)
+                    app.get(
+                        "/"+url)(
+                        auto_route)
 
                 elif archivo.endswith(".ff"):
                     
@@ -301,16 +326,16 @@ class FastFront:
                         operation_id="auto_"+archivo[:-len(".ff")]):
                         
                         path=request.url.path.split("/")
-                        print("cccccccccc ",path)
+                        
                         view=snake_slug_to_camel(path[-1])
-                        print("zzzzzzz ",settings,path[0]+"/".join([*path[1:-1],view]))
+                        
                         return FastFront.render(
                             request,
                             "/".join([*path[1:-1],view]),
                             app=appname,
                             settings=settings)
 
-                    print("sssssssss",url+"/"+camel_to_snake_slug(archivo[:-len(".ff")]))
+                    
                     app.get(
                         "/"+url+"/"+camel_to_snake_slug(archivo[:-len(".ff")]))(
                         auto_route)
