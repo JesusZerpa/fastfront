@@ -504,14 +504,14 @@ class FastFront:
             else:
                 cls.watching_files[elem[0]][1].add(app+"@"+name)
 
-        print("mmmmmmmmmmm ",app,name)
+        
         content=cls.pages[app+"@"+name]
-
+        
         variables_pattern=r"\{\{\s*?[\w|$]+\s*(?:\w+)?\s*?\}\}"
         variables2_pattern=r"\{\{\s*?([\w|$]+)\s*((?:\w+)?)\s*?\}\}"
         variables_matches=re.findall(variables_pattern,content)
         variables2_matches=re.findall(variables2_pattern,content)
-        print("wwww ",len(variables_matches),len(variables2_matches))
+        
         for k, match in enumerate(variables2_matches):
             variable=variables2_matches[k]
             match2=variables_matches[k]
@@ -524,8 +524,7 @@ class FastFront:
                 
                 if modifier:
                     valor=cls.modifiers[modifier](valor)
-                print("zzzzzzz ",modifier,variable,valor)
-                print("aaaaaaaa ",match)
+                
                 if variable in variables:
                     content=content.replace(match2,valor)
                 

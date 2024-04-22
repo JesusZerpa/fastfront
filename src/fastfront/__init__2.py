@@ -12,9 +12,6 @@ def reemplazarValores(cadena, datos):
             for elem in clave.split("."):
                 if response[elem]!=undefined:
                     response=response[elem]
-            if typeof(response)=="object":
-                 response=JSON.stringify(response)
-
             return response
         elif "[" in clave:
             clave=clave.strip()
@@ -23,7 +20,8 @@ def reemplazarValores(cadena, datos):
         else:
 
             response=datos[clave]
-
+            if response!=undefined:
+                return response.toString()
 
         if response!=undefined:
             if typeof(response)=="object":
@@ -33,10 +31,10 @@ def reemplazarValores(cadena, datos):
                 response2=Object.assign({},response)
 
                 del response2["$stores"]
-                
                 response2=JSON.stringify(response2)
                 return response2
-
+            
+            return response
 
         else:
             return  "";
@@ -45,7 +43,7 @@ def reemplazarValores(cadena, datos):
     return resultado;
 
 
-TEMPLATES={}
+templates={}
 components={}
 parser=DOMParser()
 
@@ -433,38 +431,17 @@ def process_api(that,nodo,context,localdata,doc=None):
         
     pass
 def process_for(that,node,context,idx,localdata,lock):
-    """
-    El problema de usar self ajuro es que para los condicionales no se sabe cual 
-    """
+
     fnode=node
     forval=node.getAttribute("f-for")
     elem,iterable=forval.split(" in ")
     
     cadena=""
-
-
-
-
+    for name in localdata:
+        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
     try:
-        if iterable in context.__data__:
-            iterador=context[iterable]
 
-        elif iterable in localdata:
-            iterador=localdata[iterable]
-
-        elif "." in iterable:
-            valor=None
-            for n in iterable.split("."):    
-                if valor is None:
-                    if n in context.__data__:
-                        valor=context.__data__[n]
-                    elif n in localdata:
-                        valor=localdata[n]
-                else:
-                    valor=valor[n]
-
-            iterador=valor
-
+        iterador=eval("(function(){"+f"self=this; "+cadena+f" return {iterable}"+"})").call(context)
     except Exception as e:
         console.error(e)
         if "ReferenceError" in str(e):
@@ -479,6 +456,7 @@ def process_for(that,node,context,idx,localdata,lock):
         nuevos=[]
         for k2,valor in enumerate(iterador):
             #localdata[v]=valor    
+
             clon=fnode.cloneNode(True)
             #lo quitamos antes de el travese para que el nodo se
             #procese con process_attr
@@ -525,24 +503,16 @@ def process_attr(that,nodo,context,idx,localdata,lock):
 
     data=that.states[idx]
     #Atributos no componentes
-    if nodo:
-
-        valores=dict(nodo.attributes).values()
-
-    for attr in dict(nodo.attributes).values():
-
+    for attr in nodo.attributes.values():
         cadena=""
 
         for name in localdata:
-                cadena+=f"let {name}=_localdata['{name}'];"
-        for name in context.__data__:
-            cadena+=f"let {name}=self.{name};"
-
+            cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+        
         if attr.name.startswith(":"):
-            
             _str=lambda x:str(x)
-            binds[attr.name[1:]]=eval("(function(str,_localdata){self=this; "+cadena+" return "+attr.value+" })").call(context,_str,localdata)
-            
+            binds[attr.name[1:]]=eval("(function(str){self=this; "+cadena+" return "+attr.value+" })").call(context,_str)
+
 
         if attr.name.startswith("f-action:"):
             field=attr.name.split(":")
@@ -550,71 +520,54 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                 eval("("+attr.value+")").call(context)
         if attr.name=="f-show":
 
-            _boolean=eval("(function(_localdata){self=this; "+cadena+";return "+attr.value+" })").call(context,localdata)
+            _boolean=eval("(function(){self=this; "+cadena+";return "+attr.value+" })").call(context)
             if _boolean:
                 nodo.style.opacity = "1";
             else:
                 nodo.style.opacity = "0";
         if attr.name=="f-transition":
-            eval("(function(_localdata){self=this;"+cadena+"; return "+attr.value+" })").call(context,localdata)
+            eval("(function(){self=this;"+cadena+"; return "+attr.value+" })").call(context)
             nodo.style.opacity = "0";
         
         if attr.name=="f-if":
             
             process_if(that,nodo,context,idx,localdata)
             pass
-        
         if attr.name.startswith("f-model"):
-            
             fields={}
             def build(context,value,name=None):
 
                 
               
                 def change(event):
-                    """
-                    los f-model in : solo son para nodos con f-component
-                    """
+                    if ":" in name:
+                        model,field=name.split(":")
+                        #actualiza la data local del componente al la del contexto superior, esto es asi porque,
+                        #gracias al f-model, el superior se debio haber modificado y el componente debe heredar su valor
+                        fields[field]=
+                    
+                    event.target.value
                     
                     if event.target.getAttribute("type")=="checkbox":
+                        context[name]
 
-                        if event.target.checked:
-                            
-                            if event.target._value:
-                                context[value].append(event.target._value)
-
-                        else:
-                            if event.target._value:
-                                context[value].remove(event.target._value)
-                        
-                    elif event.target.getAttribute("type")=="radio":
-                        context[value]=event.target.value
-                        
-                    else:
-                       
-                        if event.target._value:
-                            context[value]=event.target._value
-                        else:
-                            context[value]=event.target.value
-                    
                 return change
-        
-            result=eval("(function(_localdata){self=this;"+cadena+" return "+attr.value+" })").call(
-                context,localdata)
-            #nodo.value
+            result=eval("(function(){self=this; return "+attr.value+" })").call(
+                context)
+            nodo.value
 
             change=build(context,attr.value,attr.name)
-            
+
     
             nodo.addEventListener("change",change)
             nodo.removeAttribute(attr.name)
-    
+
     for name in binds:
         
         nodo.removeAttribute(":"+name)
+
         valor=binds[name]
         if valor:
-            
             accept=[]
             if typeof(valor)=="string":
                 accept.append(valor)
@@ -630,12 +583,9 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                         accept.extend(elem)
                     else:
                         accept.append(elem)
-            _valor=" ".join(accept)
+            valor=" ".join(accept)
             
-            if name=="value":
-                nodo._value=valor
-            else:
-                nodo.setAttribute(name,_valor)
+            nodo.setAttribute(name,valor)
     
     componente=nodo.getAttribute("f-component")
     ref=nodo.getAttribute("f-ref")
@@ -681,35 +631,33 @@ def process_attr(that,nodo,context,idx,localdata,lock):
         #Atributos que son componentes
         for attr in nodo.attributes.values():
             cadena=""
-            for name in localdata:
-                cadena+=f"let {name}=_localdata['{name}'];"
-            for name in context.__data__:
-                cadena+=f"let {name}=self.{name};"
 
+            for name in localdata:
+                cadena+=f"let {name}={JSON.stringify(localdata[name])};"
             
             if attr.name.startswith("f-model:"):
                 field=attr.name.split(":")
                 #actualiza la data local del componente al la del contexto superior, esto es asi porque,
                 #gracias al f-model, el superior se debio haber modificado y el componente debe heredar su valor
         
-                result=eval("(function(){self=this; "+cadena+";return "+attr.value+" })").call(context)
+                result=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 
                 data[field[1]]=result
                 padre=context
 
             if attr.name.startswith("f-text") and not attr.name.startswith("f-text:"):#
-                text=eval("(function(){self=this;"+cadena+" ;return "+attr.value+" })").call(context)
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 nodo.innerText=text
                 pass
             
             if attr.name=="f-value" and not attr.name.startswith("f-value:"):
-                text=eval("(function(){self=this; "+caden+";return "+attr.value+" })").call(context)
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 data[text]=node.innerText
                 
 
             if attr.name.startswith("f-html") and not attr.name.startswith("f-html:"):
 
-                text=eval("(function(){self=this;"+cadena+" ;return "+attr.value+" })").call(context)
+                text=eval("(function(){self=this; return "+attr.value+" })").call(context)
                 nodo.innerHTML=text
                 pass
 
@@ -739,11 +687,9 @@ def process_if(that,node,context,idx,localdata):
     node_elif_before=None
     cadena=""
     for name in localdata:
-        cadena+=f"let {name}=_localdata['{name}'];"
-    for name in context.__data__:
-        cadena+=f"let {name}=self.{name};"
-
-    valor=eval("(function(_localdata){"+f"let self=this;"+cadena+f"return {node_if}"+"})").call(context,localdata)
+        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+    
+    valor=eval("(function(iterador){"+f"let self=this;"+cadena+f" let $stores=self.$stores;return {node_if}"+"})").call(context)
 
     condition=valor==True
     node2=node.nextSibling
@@ -801,21 +747,17 @@ def process_if(that,node,context,idx,localdata):
 def travese(that,nodo,context,idx,localdata={},lock=False):
     
     if nodo.__proto__.constructor.name=="Text":
-        
+
         nodo.nodeValue=reemplazarValores(nodo.nodeValue,
             Object.assign({},context["__data__"],localdata))
+
         return nodo
     if nodo.__proto__.constructor.name=="Comment":
         return 
     if not lock:
-        cadena=""
-        for name in localdata:
-            cadena+=f"let {name}=_localdata['{name}'];"
-        for name in context.__data__:
-            cadena+=f"let {name}=self.{name};"
-
         for attr in nodo.attributes:
             attr= nodo.attributes[attr]
+
             if attr.name.startswith("@"):
                 value=attr.value
                 if "." in value:
@@ -876,14 +818,9 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                         lambda event: eval("(function(){self=this; "+value+" })").call(context) )
                     """
                     def evento(event):
-                        return eval("(function(_localdata){self=this;"+cadena+";"+value+" })").call(context) 
+                        return eval("(function(){self=this; "+value+" })").call(context) 
                     nodo.addEventListener(attr.name[1:],evento)
-            if attr.name.startswith(":"):
-
-                if attr.name==":value":
-                    result=eval("(function(_localdata){self=this;"+cadena+" ;"+attr.value+" })").call(context,localdata)
-                    nodo._value=result
-
+        
 
 
     if len(nodo.children)==0:
@@ -930,6 +867,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
 
 
     
+        
 
 class App:
     View=View
@@ -941,7 +879,7 @@ class App:
     is_mounted=False
     is_created=False
     is_updating=False
-    def __init__(self,is_reload=False):
+    def __init__(self):
         self.nodes={}
         self.stores={}
         self.refs={}
@@ -954,7 +892,6 @@ class App:
         self.mounted=[]
         self.templates={}
         self.states=[]
-        self.is_reload=is_reload
 
 
         templates=localStorage.getItem("FF-templates")
@@ -1070,34 +1007,20 @@ class App:
         # =           Lectura de templates           =
         #                 (nivel del documento)
         # ==============================================
-        if not self.is_reload:
-            for template in document.querySelectorAll("template[name]"):
-                name = template.getAttribute("name")
-                data = template.getAttribute("f-data")
-           
-                if data:
-                    data=eval("("+data+")")
-                    
-                else:
-                    data={}
-
-                self.components[name]={
-                    "template":template.outerHTML,
-                    "data":data
-                }
-        else:
-            console.log(TEMPLATES)
-            for template_name in TEMPLATES:
+        for template in document.querySelectorAll("template[name]"):
+            name = template.getAttribute("name")
+            data = template.getAttribute("f-data")
+       
+            if data:
+                data=eval("("+data+")")
                 
-                template=TEMPLATES[template_name]
-   
-                data = template["data"]
-      
+            else:
+                data={}
 
-                self.components[template_name]={
-                    "template":template["template"],
-                    "data":data
-                }
+            self.components[name]={
+                "template":template.outerHTML,
+                "data":data
+            }
 
         # ======  End of Lectura de Componentes  =======
         """
@@ -1126,9 +1049,7 @@ class App:
         else:
             data2={}
         if name in self.components:
-
             template=self.components[name].template
-
             data=self.components[name].data
 
             
@@ -1268,21 +1189,17 @@ window.FF=FF
 FF.signals={}
 def on(name,callback):
     if name in FF.signals:
-        console.log("vvvvvv ",name)
         FF.signals[name].append(callback)
     else:
         FF.signals[name]=[callback]
 FF.on=on
 def emit(name,params):
-    console.log("mmmmm",FF.signals)
     if name in FF.signals:
-        console.log("RRRRRRRR",name)
         for callback in FF.signals[name]:
-            console.log("KKKKKKKKKKKKK",callback)
             callback(params)
 FF.emit=emit
 
-def main(is_reload=False):
+def main():
     if window.FASTFRONT_DEVELOP:
         if window.FASTFRONT_SOCKET==undefined:
             window.FASTFRONT_SOCKET=io("/fastfront")
@@ -1291,26 +1208,21 @@ def main(is_reload=False):
             def travese(nodo2,before):
                 k=0
                 for nodo in before.childNodes:
-
+                    
                     if nodo.nodeValue:
+                        
                         nodo.nodeValue=nodo2.childNodes[k].nodeValue
                     else:
-
-                        if nodo2.childNodes[k]:
-
-                            if nodo2.childNodes[k].innerHTML!=nodo.innerHTML \
-                                and not nodo2.childNodes[k].hasAttribute("fastfront"):
-                                #lo que estaba pasando es que los componentes con fastfront no los puedo atravezar
-                                if len(nodo.childNodes)==0:
-                                 
-                                    nodo.innerHTML=nodo2.childNodes[k].innerHTML
-                                    
-                                elif nodo2.childNodes[k]!=undefined:
-                                 
-                                    travese(nodo2.childNodes[k],nodo)
-
-                        else:
-                            console.log("es posible que nodo este al nivel de nodo2 osea k no es valida")
+                        
+                        if nodo2.childNodes[k].innerHTML!=nodo.innerHTML \
+                            and not nodo2.childNodes[k].hasAttribute("fastfront"):
+                            
+                            if len(nodo.childNodes)==0:
+                                
+                                nodo.innerHTML=nodo2.childNodes[k].innerHTML
+                            elif nodo2.childNodes[k]!=undefined:
+                                
+                                travese(nodo2.childNodes[k],nodo)
                     k+=1
 
 
@@ -1330,30 +1242,35 @@ def main(is_reload=False):
                 i2=data["content"].rfind("</body>")
                 body.innerHTML=data["content"][i+len("<body>"):i2]
 
-                for template in body.querySelectorAll("template[name]"):
-                    name = template.getAttribute("name")
-                    data = template.getAttribute("f-data")
-               
-                    if data:
-                        data=eval("("+data+")")
-                        
-                    else:
-                        data={}
-
-                    TEMPLATES[name]={
-                        "template":template.outerHTML,
-                        "data":data
-                    }
-
                 travese(body,document.body)
 
 
 
 
+
+                #document.head.parentNode.replaceChild(doc,document.head)
+                #document.body.parentNode.replaceChild(doc2,document.body)
+                """
+                def render():
+                    FF.reload()
+                    
+                setTimeout(render,2000)
+                """
                 FF.reload()
                 FF.emit("render")
                 
                 
+                """
+                template=data["template"]
+                componente=data["componente"]
+                for app in FF.apps:
+                    for idx in reversed(FF.apps[app].nodes): 
+                        if FF.apps[app].nodes[idx]["componente"]==componente:
+                            that.components[componente].template=template
+                            context=FF.apps[app].stores[idx]
+                            nodo=FF.apps[app].nodes[idx]["nodo"]
+                            FF.apps[app].update(context,nodo,template)
+                """
                             
             window.FASTFRONT_SOCKET.on("fastfront-reload",reload)
 
@@ -1361,11 +1278,10 @@ def main(is_reload=False):
 
     aplicaciones=[]
     before_render=document.body.outerHTML
-    console.log("ZZZZZZZZZZZZZZZZZZZZZZZZZZZ")
     for nodo in document.querySelectorAll("[fastfront]"):
-        app=App(is_reload)
+        app=App()
         FF.apps[nodo.idx]=app
         app.run(nodo)
         
-FF.reload=lambda: main(True)
+FF.reload=main
 main()
