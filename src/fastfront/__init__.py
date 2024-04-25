@@ -137,6 +137,7 @@ def build_context(that,data,nodo,template,padre={}):
             if padre[name]!=undefined:
                 padre[name]=value
                 return 
+            console.log("pppppppppppppp",name)
             that.update(context,nodo,template)
 
         Object.defineProperty(context,name,{
@@ -399,8 +400,7 @@ def process_api(that,nodo,context,localdata,doc=None):
             fkey=None
             
             for attr in tpl.attributes.values():
-                attr.name
-                attr.value
+                
 
                 if attr.name.startswith(":"):
                     cadena=""
@@ -525,9 +525,8 @@ def process_attr(that,nodo,context,idx,localdata,lock):
 
     data=that.states[idx]
     #Atributos no componentes
-    if nodo:
-
-        valores=dict(nodo.attributes).values()
+    componente=nodo.getAttribute("f-component")
+    
 
     for attr in dict(nodo.attributes).values():
 
@@ -541,9 +540,11 @@ def process_attr(that,nodo,context,idx,localdata,lock):
         if attr.name.startswith(":"):
             
             _str=lambda x:str(x)
-            binds[attr.name[1:]]=eval("(function(str,_localdata){self=this; "+cadena+" return "+attr.value+" })").call(context,_str,localdata)
             
 
+            binds[attr.name[1:]]=eval("(function(str,_localdata){let self=this; "+cadena+" return "+attr.value+" })").call(context,_str,localdata)
+
+            
         if attr.name.startswith("f-action:"):
             field=attr.name.split(":")
             if data[field[1]]:
@@ -556,13 +557,15 @@ def process_attr(that,nodo,context,idx,localdata,lock):
             else:
                 nodo.style.opacity = "0";
         if attr.name=="f-transition":
+            
             eval("(function(_localdata){self=this;"+cadena+"; return "+attr.value+" })").call(context,localdata)
             nodo.style.opacity = "0";
-        
+            
         if attr.name=="f-if":
             
             process_if(that,nodo,context,idx,localdata)
             pass
+            
         
         if attr.name.startswith("f-model"):
             
@@ -599,7 +602,7 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                     
                 return change
         
-            result=eval("(function(_localdata){self=this;"+cadena+" return "+attr.value+" })").call(
+            result=eval("(function(_localdata){let self=this;"+cadena+" return "+attr.value+" })").call(
                 context,localdata)
             #nodo.value
 
@@ -607,8 +610,10 @@ def process_attr(that,nodo,context,idx,localdata,lock):
             
     
             nodo.addEventListener("change",change)
-            nodo.removeAttribute(attr.name)
+            
+            #nodo.removeAttribute(attr.name)
     
+
     for name in binds:
         
         nodo.removeAttribute(":"+name)
@@ -622,6 +627,7 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                 accept.append(valor)
             else:
                 for elem in valor:
+
                     if typeof(elem)=="object":
                         for attr in elem:
                             if elem[attr]:
@@ -631,13 +637,13 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                     else:
                         accept.append(elem)
             _valor=" ".join(accept)
-            
             if name=="value":
                 nodo._value=valor
             else:
                 nodo.setAttribute(name,_valor)
+                pass
     
-    componente=nodo.getAttribute("f-component")
+    
     ref=nodo.getAttribute("f-ref")
     store=nodo.getAttribute("f-store")
     specials={}
@@ -659,7 +665,7 @@ def process_attr(that,nodo,context,idx,localdata,lock):
     
     if componente:
         padre={}
-        componente=eval("(function(){self=this; return "+componente+" })").call(context)
+        componente=eval("(function(){let self=this; return "+componente+" })").call(context)
         template=that.components[componente].template
 
         if nodo.idx==undefined :
@@ -692,24 +698,24 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                 #actualiza la data local del componente al la del contexto superior, esto es asi porque,
                 #gracias al f-model, el superior se debio haber modificado y el componente debe heredar su valor
         
-                result=eval("(function(){self=this; "+cadena+";return "+attr.value+" })").call(context)
+                result=eval("(function(){let self=this; "+cadena+";return "+attr.value+" })").call(context)
                 
                 data[field[1]]=result
                 padre=context
 
             if attr.name.startswith("f-text") and not attr.name.startswith("f-text:"):#
-                text=eval("(function(){self=this;"+cadena+" ;return "+attr.value+" })").call(context)
+                text=eval("(function(){let self=this;"+cadena+" ;return "+attr.value+" })").call(context)
                 nodo.innerText=text
                 pass
             
             if attr.name=="f-value" and not attr.name.startswith("f-value:"):
-                text=eval("(function(){self=this; "+caden+";return "+attr.value+" })").call(context)
+                text=eval("(function(){let self=this; "+caden+";return "+attr.value+" })").call(context)
                 data[text]=node.innerText
                 
 
             if attr.name.startswith("f-html") and not attr.name.startswith("f-html:"):
 
-                text=eval("(function(){self=this;"+cadena+" ;return "+attr.value+" })").call(context)
+                text=eval("(function(){let self=this;"+cadena+" ;return "+attr.value+" })").call(context)
                 nodo.innerHTML=text
                 pass
 
@@ -818,9 +824,9 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             attr= nodo.attributes[attr]
             if attr.name.startswith("@"):
                 value=attr.value
-                if "." in value:
-                    event=value.split(".")[0]
-                    modifiers=value.split(".")[1:]
+                if "." in attr.name:
+                    event=attr.name.split(".")[0][1:]
+                    modifiers=attr.name.split(".")[1]
                     """
                     nodo.addEventListener(attr.name[1:],
                         lambda event: eval("(function(){self=this; "+value+" })").call(context) )
@@ -867,7 +873,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                                 pass
 
 
-                        return eval("(function(event){self=this; "+value+" })").call(context,event) 
+                        return eval("(function(event,_localdata){let self=this; "+cadena+" "+value+" })").call(context,event,localdata) 
                     nodo.addEventListener(attr.name[1:],evento)
                 else:
 
@@ -875,13 +881,27 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                     nodo.addEventListener(attr.name[1:],
                         lambda event: eval("(function(){self=this; "+value+" })").call(context) )
                     """
-                    def evento(event):
-                        return eval("(function(_localdata){self=this;"+cadena+";"+value+" })").call(context) 
+                    console.log("hhhhhh")
+                    def build(context,localdata):
+                        def evento(event):
+                            before_state={}
+                            for n in context["__data__"]:
+                                if not n.startswith("$"):
+                                    before_state[n]=context["__data__"][n]
+                            before_state=JSON.stringify(before_state)
+                            eval("(function($event,_localdata){let self=this;"+cadena+"; console.log('llllll',$event);"+value+" })").call(context,event,localdata) 
+                            for n in context["__data__"]:
+                                if not n.startswith("$"):
+                                    if before_state[n]!=JSON.stringify(context["__data__"][n]):
+                                        console.log("kkkkk ",n,context["__data__"][n])
+                                        context[n]=context["__data__"][n]
+                        return evento
+                    evento=build(context,localdata)
                     nodo.addEventListener(attr.name[1:],evento)
             if attr.name.startswith(":"):
 
                 if attr.name==":value":
-                    result=eval("(function(_localdata){self=this;"+cadena+" ;"+attr.value+" })").call(context,localdata)
+                    result=eval("(function(_localdata){let self=this;"+cadena+" ;"+attr.value+" })").call(context,localdata)
                     nodo._value=result
 
 
