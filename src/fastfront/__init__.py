@@ -25,6 +25,7 @@ def reemplazarValores(cadena, datos):
             response=datos[clave]
 
 
+
         if response!=undefined:
             if typeof(response)=="object":
                 #Esto se hace para evitar la recursividad al hacer
@@ -36,6 +37,8 @@ def reemplazarValores(cadena, datos):
                 
                 response2=JSON.stringify(response2)
                 return response2
+            else:
+                return response.toString()
 
 
         else:
@@ -127,18 +130,21 @@ def build_context(that,data,nodo,template,padre={}):
     context={"__data__":None}
     data2=Object.assign({"$refs":that.refs,"$stores":that.stores},data)
     context={"__data__":data2}
-    def builder(name,data):
+    def builder(name,data,context):
         def get_func():
             return data2[name]
         def set_func(value):
+      
             that.render_idx=nodo.idx
             data[name]=value
             data2[name]=value
             if padre[name]!=undefined:
+         
                 padre[name]=value
                 return 
-            console.log("pppppppppppppp",name)
+      
             that.update(context,nodo,template)
+        context["__data__"]["$set_"+name]=set_func
 
         Object.defineProperty(context,name,{
             "get":get_func,
@@ -146,7 +152,7 @@ def build_context(that,data,nodo,template,padre={}):
             })
     
     for name in data2:
-        builder(name,data)
+        builder(name,data,context)
 
         
     return context
@@ -166,271 +172,288 @@ def process_api(that,nodo,context,localdata,doc=None):
         tpl=doc
     else:
         tpl=nodo
-
-    fhead=tpl.getAttribute("f-head")
-    ftarget=tpl.getAttribute("f-target")
-    ftrigger=tpl.getAttribute("f-trigger")
-
-    fswap=tpl.getAttribute("f-swap")#reemplasar elemento, transicion
-    fload=tpl.getAttribute("f-load")#spinner
-
-    form_type=None
-
-    for attr in tpl.attributes.values():
-        
-        
-        if attr.name.startswith("f-post") or attr.name.startswith("f-get") \
-            or attr.name.startswith("f-put") or attr.name.startswith("f-patch") or attr.name.startswith("f-delete"):
-            
-            value=eval("(function(){"+f" self=this;return {attr.value} "+"})").call(context)
-
-            if attr.name.endswith(".formdata"):
-                form_type="multipart/form-data"
-            elif attr.name.endswith(".urlencoded"):
-                form_type="application/x-www-form-urlencoded"
-            elif attr.name.endswith(".plain"):
-                form_type="text/plain"
-            else:
-                form_type="application/json"
-        if value!=undefined:
-            if attr.name.startswith("f-post"):
-                fpost=value
-            elif attr.name.startswith("f-get"):
-                fget=value
-            elif attr.name.startswith("f-error"):
-                ferror=value
-            elif attr.name.startswith("f-success"):
-                fsuccess=value
-            elif attr.name.startswith("f-put"):
-                fput=value
-            elif attr.name.startswith("f-patch"):
-                fpatch=value
-            elif attr.name.startswith("f-delete"):
-                fdelete=value
-        if attr.name.startswith(":"):
-            cadena=""
-            for name in localdata:
-                cadena+=f"let {name}={JSON.stringify(localdata[name])};"
-            _str=lambda x:str(x)
-
-
-
-
-
-    if fhead:
-        fhead=context[fhead]
-    else:
-        fhead={
-            "Content-Type":"application/json",
-            }
-    if form_type:
-        fhead["Content-Type"]=form_type
-
-    async def trigger(event):
-        data={}
-        if event!=undefined:
-            event.preventDefault()
-            event.stopPropagation()
-
-            if tpl.getAttribute("f-form"):
-                fform=tpl.getAttribute("f-form")
-                
-                if fform!=undefined and event.target!=undefined:
-                    data=that.process_form(context,event.target)
-            elif tpl.getAttribute("f-payload"):
-                fpayload=tpl.getAttribute("f-payload")
-                
-                if fpayload!=undefined and event.target!=undefined:
-                    data=that.process_payload(context,event.target)
-
-
-        if fget!=undefined:
-            try:
-                req=await fetch(fget)
-                data=await req.json()
-            except Exception as e:
-                if ferror:
-                    eval("(function(){"+f" self=this;{ferror} "+"})").call(context)
-            if fsuccess:
-                eval("(function(data){"+f" self=this;{fsuccess} "+"})").call(context,data)
-
-            fkey=None
-            for attr in tpl.attributes.values():
-                attr.name
-                attr.value
-                if attr.name.startswith(":"):
-                    cadena=""
-                    for name in localdata:
-                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
-                    _str=lambda x:str(x)
-
-                if attr.name.startswith("f-key"):
-                    fkey=attr.value
-
-                if attr.name.startswith("f-response:"):
-                    field=attr.name.split(":")
-                    response=eval(f"({attr.value})").call(None,data,fkey)
-
-                    context[field[1]]=response
-                    
-                    if field[2]:
-                        response=eval(f"({attr.value})").call(None,data,fkey)#lambda data:data.rows
-                        
-                        context[field[2]]=response
-                        
-
-
-        elif fpost!=undefined:
-            
-            if fhead["Content-Type"]=="application/json":
-                req=await fetch(fpost,{"method":"POST",
-                    "head":fhead,
-                    "body":JSON.stringify(data)
-                    })
-            else:
-                req=await fetch(fpost,{"method":"POST",
-                    "head":fhead,
-                    "body":data
-                    })
-
-
-            data=await req.json()
-            fkey=None
-            
-            for attr in tpl.attributes.values():
-                attr.name
-                attr.value
-
-                if attr.name.startswith(":"):
-                    cadena=""
-                    for name in localdata:
-                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
-                    _str=lambda x:str(x)
-
-                if attr.name.startswith("f-key"):
-                    fkey=attr.value
-
-                if attr.name.startswith("f-reponse:"):
-                    field=attr.name.split(":")
-                    
-                    response=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
-                    
-                    context[field[1]]=response
-                    
-
-
-        elif fpatch!=undefined:
-            
-            if fhead["Content-Type"]=="application/json":
-                req=await fetch(fpost,{"method":"PATCH",
-                    "head":fhead,
-                    "body":JSON.stringify(data)
-                    })
-            else:
-                req=await fetch(fpost,{"method":"PATCH",
-                    "head":fhead,
-                    "body":data
-                    })
-
-            data=await req.json()
-            fkey=None
-            
-            for attr in tpl.attributes.values():
-                attr.name
-                attr.value
-
-                if attr.name.startswith(":"):
-                    cadena=""
-                    for name in localdata:
-                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
-                    _str=lambda x:str(x)
-
-                if attr.name.startswith("f-key"):
-                    fkey=attr.value
-
-                if attr.name.startswith("f-reponse:"):
-                    field=attr.name.split(":")
-                    context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
-                    
-        elif fput!=undefined:
-            
-            if fhead["Content-Type"]=="application/json":
-                req=await fetch(fpost,{"method":"PUT",
-                    "head":fhead,
-                    "body":JSON.stringify(data)
-                    })
-            else:
-                req=await fetch(fpost,{"method":"PUT",
-                    "head":fhead,
-                    "body":data
-                    })
-            data=await req.json()
-            fkey=None
-            
-            for attr in tpl.attributes.values():
-                attr.name
-                attr.value
-
-                if attr.name.startswith(":"):
-                    cadena=""
-                    for name in localdata:
-                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
-                    _str=lambda x:str(x)
-
-                if attr.name.startswith("f-key"):
-                    fkey=attr.value
-
-                if attr.name.startswith("f-reponse:"):
-                    field=attr.name.split(":")
-                    context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
-                    
-        elif fdelete!=undefined:
-            
-            if fhead["Content-Type"]=="application/json":
-                req=await fetch(fpost,{"method":"DELETE",
-                    "head":fhead,
-                    "body":JSON.stringify(data)
-                    })
-            else:
-                req=await fetch(fpost,{"method":"DELETE",
-                    "head":fhead,
-                    "body":data
-                    })
-            data=await req.json()
-            fkey=None
-            
-            for attr in tpl.attributes.values():
-                
-
-                if attr.name.startswith(":"):
-                    cadena=""
-                    for name in localdata:
-                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
-                    _str=lambda x:str(x)
-
-                if attr.name.startswith("f-key"):
-                    fkey=attr.value
-
-                if attr.name.startswith("f-reponse:"):
-                    field=attr.name.split(":")
-                    context[field[1]]=eval(f"({attr.value})(data,fkey)").call(None,data,fkey)#lambda data:data.rows
     
-    if ftrigger!=undefined :
-        
-        ftrigger=eval("(function(){"+f" self=this;return {ftrigger} "+"})").call(context)
-        
+    if  nodo.__proto__.constructor.name!="Text" and nodo.__proto__.constructor.name!="Comment":
+        cadena=""
 
-    if ftrigger==undefined :
-        if nodo.triggered==undefined and any([bool(fget),bool(fput),bool(fdelete),bool(fpost)]):
+        for name in localdata:
+            if "." not in name:
+                cadena+=f"let {name}=_localdata['{name}'];"
+        for name in context.__data__:
+            cadena+=f"let {name}=self.{name};"
+
+        fhead=nodo.getAttribute("f-head")
+        ftarget=nodo.getAttribute("f-target")
+        ftrigger=nodo.getAttribute("f-trigger")
+
+        fswap=nodo.getAttribute("f-swap")#reemplasar elemento, transicion
+        fload=nodo.getAttribute("f-load")#spinner
+        
+        fpost=None
+        fget=None
+        fput=None
+        fdelete=None
+        fpacth=None
+        fresponse=None
+        fresponse_name=None
+        fsuccess=None
+        ferror=None
+
+        form_type=None
+        value=None
+
+        keys=["1","2"]
+        attributes=dict(nodo.attributes).values()
+        attributes2=dict(tpl.attributes).values()
+  
+
+        for k,attr in enumerate(attributes2):
             
-            tpl.addEventListener("click",trigger)
-            tpl.triggered=True
-    elif ftrigger=="init":
-        if nodo.inited==undefined:
-            trigger()
-            nodo.inited=True
+            #console.log("hhhhhh",nodo.attributes[attr])
+            if attr.name.startswith(":"):
+                cadena=""
+                for name in localdata:
+                    if "." not in name:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                _str=lambda x:str(x)
+
+            if attr.name.startswith("f-key"):
+                if attr.name in nodo.attributes:
+                    fkey=nodo.attributes[attr.name].value
+                else:
+                    fkey=attr.value
+            if attr.name.startswith("f-trigger"):
+                if attr.name in dict(nodo.attributes):
+                    ftrigger=nodo.attributes[attr.name].value
+                else:
+                    ftrigger=attr.value
+            attr_name=None
+            if attr.name.startswith("f-response"):
+                if attr.name in dict(nodo.attributes):
+                    fresponse=nodo.attributes[attr.name].value
+                    fresponse_name=attr.name
+                else:
+                    
+                    fresponse=attr.value
+                    fresponse_name=attr.name
+
+            if attr.name.startswith("f-post") or attr.name.startswith("f-get") \
+                or attr.name.startswith("f-put") or attr.name.startswith("f-patch") or attr.name.startswith("f-delete"):
+                
+                attr_value=attr.value
+                if typeof(attr_value)!="undefined":
+                
+                    
+          
+                    if nodo.hasAttribute(attr.name):
+                        value=eval("(function(_localdata){"+f"let self=this; "+cadena+f" return {attr_value} "+"})").call(context,localdata)    
+                    
+                        if attr.name.endswith(".formdata"):
+                            form_type="multipart/form-data"
+                        elif attr.name.endswith(".urlencoded"):
+                            form_type="application/x-www-form-urlencoded"
+                        elif attr.name.endswith(".plain"):
+                            form_type="text/plain"
+                        else:
+                            form_type="application/json"
+                    elif doc:
+                        attr_value=doc.getAttribute(attr.name)
+                        value=eval("(function(_localdata){"+f"let self=this; "+cadena+f" return {attr_value} "+"})").call(context,localdata)
+                       
+                        if attr.name.endswith(".formdata"):
+                            form_type="multipart/form-data"
+                        elif attr.name.endswith(".urlencoded"):
+                            form_type="application/x-www-form-urlencoded"
+                        elif attr.name.endswith(".plain"):
+                            form_type="text/plain"
+                        else:
+                            form_type="application/json"
+              
+                    if attr.name.startswith("f-post"):
+                        fpost=value
+                        pass
+                    
+                    elif attr.name.startswith("f-get"):
+                        fget=value
+                    elif attr.name.startswith("f-put"):
+                        fput=value
+                    elif attr.name.startswith("f-patch"):
+                        fpatch=value
+                    elif attr.name.startswith("f-delete"):
+                        fdelete=value
+
+            if attr.name.startswith("f-error"):
+                ferror=attr.value
+            if attr.name.startswith("f-success"):
         
+                fsuccess=attr.value
+            
+ 
+            if attr.name.startswith(":"):
+                cadena=""
+                _str=lambda x:str(x)
+                for name in localdata:
+                    if "." not in name:
+                        cadena+=f"let {name}={JSON.stringify(localdata[name])};"
+                
         
+            
+        
+        if fhead:
+            fhead=context[fhead]
+        else:
+            fhead={
+                "Content-Type":"application/json",
+                "accept":"application/json"
+                }
+        if form_type:
+            fhead["Content-Type"]=form_type
+        
+        async def trigger(event):
+            data={}
+            console.log("HHHHHHHHHHHHH")
+            if event!=undefined:
+                event.preventDefault()
+                event.stopPropagation()
+
+                if nodo.getAttribute("f-form"):
+                    fform=nodo.getAttribute("f-form")
+                    
+                    if fform!=undefined and event.target!=undefined:
+                        data=that.process_form(context,event.target)
+                elif nodo.getAttribute("f-payload"):
+                    fpayload=nodo.getAttribute("f-payload")
+                    
+                    if fpayload!=undefined and event.target!=undefined:
+                        data=that.process_payload(context,event.target,localdata)
+
+
+            if fget!=None:
+
+                if fhead["Content-Type"]=="application/json":
+                    req=await fetch(fget,{"method":"GET",
+                        "headers":fhead,
+                        
+                        })
+                else:
+                    req=await fetch(fget,{"method":"GET",
+                        "headers":fhead,
+                        })
+
+
+             
+
+            elif fpost!=None:
+                console.log("EEEEEEEEEEEEEE",{"method":"POST",
+                        "headers":fhead,
+                        "body":JSON.stringify(data)
+                        }
+                        )
+                if fhead["Content-Type"]=="application/json":
+                    req=await fetch(fpost,{"method":"POST",
+                        "headers":fhead,
+                        "body":JSON.stringify(data)
+                        })
+                else:
+                    req=await fetch(fpost,{"method":"POST",
+                        "headers":fhead,
+                        "body":data
+                        })
+
+
+                
+
+            elif fpatch!=undefined:
+                
+                if fhead["Content-Type"]=="application/json":
+                    req=await fetch(fpatch,{"method":"PATCH",
+                        "headers":fhead,
+                        "body":JSON.stringify(data)
+                        })
+                else:
+                    req=await fetch(fpatch,{"method":"PATCH",
+                        "headers":fhead,
+                        "body":data
+                        })
+
+                
+            elif fput!=undefined:
+                
+                if fhead["Content-Type"]=="application/json":
+                    req=await fetch(fput,{"method":"PUT",
+                        "headers":fhead,
+                        "body":JSON.stringify(data)
+               })
+                else:         
+                    req=await fetch(fput,{"method":"PUT",
+                        "headers":fhead,
+                        "body":data
+                        })
+                data=await req.json()
+                
+               
+            elif fdelete!=undefined:
+                
+                if fhead["Content-Type"]=="application/json":
+                    req=await fetch(fdelete,{"method":"DELETE",
+                        "headers":fhead,
+                        "body":JSON.stringify(data)
+                        })
+                else:
+                    req=await fetch(fdelete,{"method":"DELETE",
+                        "headers":fhead,
+                        "body":data
+                        })
+
+            if req.status>=200 and req.status<300: 
+                data=await req.json()
+                for attr in nodo.attributes.values():
+                    
+                    if attr.name.startswith("f-reponse:"):
+                        field=attr.name.split(":")
+                        console.log("ddddd ",f"({fresponse})")
+                        context[field[1]]=eval(f"({fresponse})").call(None,data,fkey)#lambda data:data.rows
+                console.log("$$$$$$$ ",fsuccess)
+                if fresponse:
+                    field=fresponse_name.split(":")
+                    response=eval(f"({fresponse})").call(None,data,fkey)#lambda data:data.rows
+                    console.log("wwwww ",response)
+                    context[field[1]]=response
+                    console.log("YYYYY ",context)
+                if fsuccess:
+                    console.log("WWWWWWW")
+                    eval("(function(data,_localdata){"+f"let self=this;"+cadena+f" {fsuccess} "+"})").call(context,data,localdata)
+                
+
+            else:
+                try:
+                    data=await req.json()
+                except:
+                    response=await req.text()
+                    console.error(response)
+
+                if ferror:
+                    eval("(function(_localdata){"+f"let self=this;"+cadena+f" {ferror} "+"})").call(context,localdata)
+
+            fkey=None
+
+        
+        if typeof(ftrigger)!="undefined" :
+  
+            ftrigger=eval("(function(_localdata){"+f" let self=this;"+cadena+f" return {ftrigger} "+"})").call(context,localdata)
+
+        if typeof(ftrigger)=="undefined" or ftrigger==None:
+            
+            if typeof(nodo.triggered)=="undefined" and any([bool(fget),bool(fput),bool(fdelete),bool(fpost)]):
+
+                nodo.addEventListener("click",trigger)
+                nodo.triggered=True
+        if ftrigger=="init":
+            if typeof(nodo.inited)=='undefined':
+                trigger()
+                nodo.inited=True
+        
+            
     pass
 def process_for(that,node,context,idx,localdata,lock):
     """
@@ -488,8 +511,11 @@ def process_for(that,node,context,idx,localdata,lock):
             data={k.strip():k2,v.strip():valor}
             data.update(localdata)
             #clon.removeAttribute("f-for")
-            travese(that,clon,context,idx,data,lock)
+            travese(that,clon,context,idx,data,lock,)
             parent.insertBefore(clon,node)
+        
+        if parent:
+            parent._for=True
 
         
             
@@ -499,7 +525,7 @@ def process_for(that,node,context,idx,localdata,lock):
 
     else:
         v=elem.strip() 
-    
+        l=[]
         for valor in iterador:
             
 
@@ -507,18 +533,24 @@ def process_for(that,node,context,idx,localdata,lock):
             clon.removeAttribute("f-for")
             data={v:valor}
             data.update(localdata)
-
-            node.parentNode.insertBefore(clon,node)
-            travese(that,clon,context,idx,data,lock)
+            if node.parentNode:
+                node.parentNode.insertBefore(clon,node)
+            l.append([clon,data])
+            
             #clon.removeAttribute("f-for")
             #node.parentNode.appendChild(clon)
+        condition={"condition":False}
+        for item in l:
+            travese(that,item[0],context,idx,item[1],lock,condition)
+        if node.parentNode:
+            node.parentNode._for=True
     fnode.remove()
 
 
 
 
 
-def process_attr(that,nodo,context,idx,localdata,lock):
+def process_attr(that,nodo,context,idx,localdata,lock,condition={}):
     #nodo,context,idx,data,localdata
     binds={}
      #deberia ser el contexto padre o algo asi ver mas tarde
@@ -526,7 +558,62 @@ def process_attr(that,nodo,context,idx,localdata,lock):
     data=that.states[idx]
     #Atributos no componentes
     componente=nodo.getAttribute("f-component")
-    
+    def build(context,value,name,that):              
+        def change(event):
+            """
+            los f-model in : solo son para nodos con f-component
+            """
+            if event.target.getAttribute("type")=="checkbox":
+
+                if event.target.checked:
+                    
+                    if event.target._value:
+                        context[value].append(event.target._value)
+
+                else:
+                    if event.target._value:
+                        context[value].remove(event.target._value)
+                
+            elif event.target.getAttribute("type")=="radio":
+                context[value]=event.target.value
+                
+            else:
+                console.log("ttttt ",context["__data__"],"$set_"+value)
+                if event.target._value:
+                    if "." in value:
+                        c=context
+                        path=value.split(".")
+                        for k,n in enumerate(path):
+                            if k==len(path)-1:
+                                c[n]=event.target._value
+                            else:
+                                c=c[n]
+                        context[path[0]]=context["__data__"][path[0]]
+                        event.target.value=c    
+                 
+
+                    else:
+                        context[value]=event.target._value
+                        event.target.value=context[value]
+                    
+
+                else:
+                    if "." in value:
+                        c=context
+                        path=value.split(".")
+                        for k,n in enumerate(path):
+                            if k==len(path)-1:
+                                c[n]=event.target.value
+                            c=c[n]
+
+                        context[path[0]]=context["__data__"][path[0]]
+                        
+                    
+                    else:
+                        context[value]=event.target.value
+            event.target.focus()
+           
+        return change
 
     for attr in dict(nodo.attributes).values():
 
@@ -543,74 +630,54 @@ def process_attr(that,nodo,context,idx,localdata,lock):
             
 
             binds[attr.name[1:]]=eval("(function(str,_localdata){let self=this; "+cadena+" return "+attr.value+" })").call(context,_str,localdata)
-
+            nodo._render=True
             
         if attr.name.startswith("f-action:"):
+
             field=attr.name.split(":")
             if data[field[1]]:
                 eval("("+attr.value+")").call(context)
+            nodo._render=True
         if attr.name=="f-show":
-
+            
             _boolean=eval("(function(_localdata){self=this; "+cadena+";return "+attr.value+" })").call(context,localdata)
             if _boolean:
                 nodo.style.opacity = "1";
             else:
                 nodo.style.opacity = "0";
+            nodo._render=True
         if attr.name=="f-transition":
             
             eval("(function(_localdata){self=this;"+cadena+"; return "+attr.value+" })").call(context,localdata)
             nodo.style.opacity = "0";
-            
+            nodo._render=True
         if attr.name=="f-if":
             
-            process_if(that,nodo,context,idx,localdata)
-            pass
+            process_if(that,nodo,context,idx,localdata,condition)
+            nodo._render=True
             
         
         if attr.name.startswith("f-model"):
             
             fields={}
-            def build(context,value,name=None):
-
-                
-              
-                def change(event):
-                    """
-                    los f-model in : solo son para nodos con f-component
-                    """
-                    
-                    if event.target.getAttribute("type")=="checkbox":
-
-                        if event.target.checked:
-                            
-                            if event.target._value:
-                                context[value].append(event.target._value)
-
-                        else:
-                            if event.target._value:
-                                context[value].remove(event.target._value)
-                        
-                    elif event.target.getAttribute("type")=="radio":
-                        context[value]=event.target.value
-                        
-                    else:
-                       
-                        if event.target._value:
-                            context[value]=event.target._value
-                        else:
-                            context[value]=event.target.value
-                    
-                return change
-        
+            
+            
             result=eval("(function(_localdata){let self=this;"+cadena+" return "+attr.value+" })").call(
                 context,localdata)
-            #nodo.value
+            if result is not None and typeof(result)!="undefined":
+                nodo.value=result.toString()
 
-            change=build(context,attr.value,attr.name)
-            
-    
+            change=build(context,attr.value,attr.name,that)
+            nodo_type=nodo.getAttribute("type")
+            """
+            if nodo_type=="text" or nodo_type=="textarea":
+                nodo.addEventListener("keyup",change)
+            else:
+                nodo.addEventListener("change",change)
+            """
             nodo.addEventListener("change",change)
-            
+            nodo._render=True
+            nodo._model=True
             #nodo.removeAttribute(attr.name)
     
 
@@ -650,10 +717,10 @@ def process_attr(that,nodo,context,idx,localdata,lock):
     
     if ref:
         eval("(function(nodo){ this['$refs']["+ref+"]= nodo; })").call(context,nodo)
-
+        nodo._render=True
     if store:
         eval("(function(){ if (this['$store']["+store+"]==undefined){this['$store']["+store+"]={}}else{ throw Error('No se puede crear store ya '"+store+"' ya existia')} })").call(context)
-    
+        nodo._render=True
 
         
             
@@ -688,9 +755,11 @@ def process_attr(that,nodo,context,idx,localdata,lock):
         for attr in nodo.attributes.values():
             cadena=""
             for name in localdata:
-                cadena+=f"let {name}=_localdata['{name}'];"
+                if "." not in name:
+                    cadena+=f"let {name}=_localdata['{name}'];"
             for name in context.__data__:
-                cadena+=f"let {name}=self.{name};"
+                if "." not in name:
+                    cadena+=f"let {name}=self.{name};"
 
             
             if attr.name.startswith("f-model:"):
@@ -702,22 +771,24 @@ def process_attr(that,nodo,context,idx,localdata,lock):
                 
                 data[field[1]]=result
                 padre=context
+                nodo._render=True
 
             if attr.name.startswith("f-text") and not attr.name.startswith("f-text:"):#
                 text=eval("(function(){let self=this;"+cadena+" ;return "+attr.value+" })").call(context)
                 nodo.innerText=text
-                pass
+                nodo._render=True
             
             if attr.name=="f-value" and not attr.name.startswith("f-value:"):
                 text=eval("(function(){let self=this; "+caden+";return "+attr.value+" })").call(context)
                 data[text]=node.innerText
+                nodo._render=True
                 
 
             if attr.name.startswith("f-html") and not attr.name.startswith("f-html:"):
 
                 text=eval("(function(){let self=this;"+cadena+" ;return "+attr.value+" })").call(context)
                 nodo.innerHTML=text
-                pass
+                nodo._render=True
 
         cadena=""
         context2=build_context(that,data,nodo,template,padre)
@@ -740,72 +811,73 @@ def process_attr(that,nodo,context,idx,localdata,lock):
 
 
 
-def process_if(that,node,context,idx,localdata):
+def process_if(that,node,context,idx,localdata,condition={}):
     node_if=node.getAttribute("f-if")
     node_elif_before=None
     cadena=""
     for name in localdata:
-        cadena+=f"let {name}=_localdata['{name}'];"
+        if "." not in name:
+            cadena+=f"let {name}=_localdata['{name}'];"
     for name in context.__data__:
-        cadena+=f"let {name}=self.{name};"
+        if "." not in name:
+            cadena+=f"let {name}=self.{name};"
 
-    valor=eval("(function(_localdata){"+f"let self=this;"+cadena+f"return {node_if}"+"})").call(context,localdata)
+    node2=node
 
-    condition=valor==True
-    node2=node.nextSibling
-    if node2 :
-        if not valor:
-            node.remove()
-            pass
-        else:
-            node.removeAttribute("f-if")
-        
-        
-        
-        while node2!=undefined:
-            
-            if node2.__proto__.constructor.name!="Text":
+    node_if=node2.hasAttribute("f-if")
 
-                node_elif=node2.hasAttribute("f-elif")
+    node_elif=node2.hasAttribute("f-elif")
 
-                node_else=node2.hasAttribute("f-else")
-                
-                if node_elif:
-                    _elif=node2.getAttribute("f-elif")
-                    valor=eval("(function(iterador){"+f"let self=this;let $stores=self.$stores; let {iterable}=iterador; console.log('bbbbbbb','{iterable}');return {_elif}"+"})").call(self.context,iterador)
+    node_else=node2.hasAttribute("f-else")
     
-                    if not condition and valor==True:
+    _remove=True
 
-                        condition=valor
-                    else:
-                        node2.remove()    
+    if  node_if:
+        _if=node2.getAttribute("f-if")
+        valor=eval("(function(_localdata){"+f"let self=this; {cadena} return {_if}"+"})").call(context,localdata)
+        console.log("FFFFF",valor,context,localdata,_if)
+        condition=valor
+        if condition:
+            condition["condition"]=True
+        if not condition:
+            node2.remove()
 
-                        
-                elif condition and not node_else:#elif
-                    node2.remove()
-                    pass
-                    
-                elif condition and node_else:#else
-                    
-                    node2.remove()
-                    pass
+            console.log("iiii",_remove)
+        console.log("nnnnnnnnnnnnn",valor,condition,_remove)
+    elif node_elif:
+        _elif=node2.getAttribute("f-elif")
+        valor=eval("(function(_localdata){"+f"let self=this; {cadena} return {_elif}"+"})").call(context,localdata)
 
-                if condition:
-                    if node2.hasAttribute("f-if"):
-                        node2.removeAttribute("f-if") 
-                    if node2.hasAttribute("f-elif"):
-                        node2.removeAttribute("f-elif")
-                    if node2.hasAttribute("f-else"):
-                        node2.removeAttribute("f-else") 
-                
-            if node_else:
-                break
+        if not condition and valor==True:
 
-            node2=node2.nextSibling
+            condition=valor
+        elif condition:
+
+            node2.remove() 
+        nodo2._render=True
+    elif condition and not node_else and node_elif:#elif
+        
+        _remove=True
+        
+    elif condition and node_else:#else
+        
+        _remove=True
+        pass
+
+    if node2.hasAttribute("f-if"):
+        node2.removeAttribute("f-if") 
+    if node2.hasAttribute("f-elif"):
+        node2.removeAttribute("f-elif")
+    if node2.hasAttribute("f-else"):
+        node2.removeAttribute("f-else") 
+
         
 
-def travese(that,nodo,context,idx,localdata={},lock=False):
-    
+        
+
+def travese(that,nodo,context,idx,localdata={},lock=False,condition={}):
+
+    process_api(that,nodo,context,localdata)
     if nodo.__proto__.constructor.name=="Text":
         
         nodo.nodeValue=reemplazarValores(nodo.nodeValue,
@@ -816,9 +888,11 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
     if not lock:
         cadena=""
         for name in localdata:
-            cadena+=f"let {name}=_localdata['{name}'];"
+            if "." not in name:
+                cadena+=f"let {name}=_localdata['{name}'];"
         for name in context.__data__:
-            cadena+=f"let {name}=self.{name};"
+            if "." not in name:
+                cadena+=f"let {name}=self.{name};"
 
         for attr in nodo.attributes:
             attr= nodo.attributes[attr]
@@ -875,13 +949,14 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
 
                         return eval("(function(event,_localdata){let self=this; "+cadena+" "+value+" })").call(context,event,localdata) 
                     nodo.addEventListener(attr.name[1:],evento)
+                    nodo._render=True
                 else:
 
                     """
                     nodo.addEventListener(attr.name[1:],
                         lambda event: eval("(function(){self=this; "+value+" })").call(context) )
                     """
-                    console.log("hhhhhh")
+                    
                     def build(context,localdata):
                         def evento(event):
                             before_state={}
@@ -892,22 +967,27 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
                             eval("(function($event,_localdata){let self=this;"+cadena+"; console.log('llllll',$event);"+value+" })").call(context,event,localdata) 
                             for n in context["__data__"]:
                                 if not n.startswith("$"):
-                                    if before_state[n]!=JSON.stringify(context["__data__"][n]):
-                                        console.log("kkkkk ",n,context["__data__"][n])
+                                    if typeof(context["__data__"][n])=="object" and before_state[n]!=JSON.stringify(context["__data__"][n]):
+                                        #solo seria necesario una vez puesto que __data__
+                                        #ya tiene todos los cambios
                                         context[n]=context["__data__"][n]
+                                        break
                         return evento
                     evento=build(context,localdata)
                     nodo.addEventListener(attr.name[1:],evento)
+                    nodo._render=True
             if attr.name.startswith(":"):
 
                 if attr.name==":value":
                     result=eval("(function(_localdata){let self=this;"+cadena+" ;"+attr.value+" })").call(context,localdata)
                     nodo._value=result
 
+                nodo._render=True
+
 
 
     if len(nodo.children)==0:
-        process_api(that,nodo,context,localdata)
+        
         
         nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
         
@@ -917,9 +997,10 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             # Procesado cuando no hay hijos
             
             process_for(that,nodo,context,idx,localdata,lock)
+
         else:
             
-            process_attr(that,nodo,context,idx,localdata,lock)
+            process_attr(that,nodo,context,idx,localdata,lock,condition)
     else:
         
         if nodo.getAttribute("f-for"):
@@ -928,7 +1009,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False):
             process_for(that,nodo,context,idx,localdata,lock)
         else:
             
-            process_attr(that,nodo,context,idx,localdata,lock)
+            process_attr(that,nodo,context,idx,localdata,lock,condition)
         """
         console.log("wwwwwwwwwwwwwww",localdata)
         for comp in nodo.childNodes:
@@ -1182,6 +1263,7 @@ class App:
                     
                     value=eval("(function(){"+f"let self=this;let $stores=self.$stores;console.log('44444444444 ',{model}) return {model}"+"})").call(context)
                     data[name]=value
+                nodo._model=True
                 nodo.removeAttribute("f-model")
 
             for nodo2 in nodo.children:
@@ -1190,9 +1272,17 @@ class App:
         travese_nodo(self.refs[form])
         return data
 
-    def process_payload(self,context,nodo):
+    def process_payload(self,context,nodo,localdata):
         form=nodo.getAttribute("f-payload")
-        return eval("(function(){"+f"let self=this;let $stores=self.$stores; return {form}"+"})").call(context)
+        cadena=""
+        for name in localdata:
+            if "." not in name:
+                cadena+=f"let {name}=_localdata['{name}'];"
+        for name in context.__data__:
+            if "." not in name:
+                cadena+=f"let {name}=self.{name};"
+
+        return eval("(function(){"+f"let self=this;{cadena} return {form}"+"})").call(context)
         
         
 
@@ -1222,7 +1312,57 @@ class App:
         tpl=doc.children[0]
         finit=doc.children[0].getAttribute("f-init")
 
-        nodo.innerHTML=tpl.innerHTML
+        #nodo.innerHTML=tpl.innerHTML
+        def travese2(nodo,nodo2):
+            if len(nodo.childNodes)==len(nodo2.childNodes):
+                
+                
+                if nodo2.childNodes==0:
+                    if nodo.__proto__.constructor.name=="Text":
+                        nodo.nodeValue=nodo2.nodeValue
+                    else:
+                        nodo.innerHTML=nodo2.innerHTML
+                        #console.log("oooooooo",nodo,nodo2)
+                else:
+                    k=0
+                    for n2 in nodo2.childNodes:
+                        n=nodo.childNodes[k]
+                        
+                        if n and n._model:
+                            pass
+                        elif n and n._render:
+                            
+                            if n.__proto__.constructor.name=="Text":
+                                n.nodeValue=n2.nodeValue
+                            else:
+                                """
+                                if len(n.childNodes)>0:
+                                    travese2(n,n2)
+                                else:
+                                """
+                                n.outerHTML=n2.outerHTML
+
+
+                        elif n and n._for:
+                            n.outerHTML=n2.outerHTML
+                            #console.log("aaaaaa",nodo,nodo2)
+                        else:
+                            if n:
+
+                                travese2(
+                                    n,
+                                    n2)
+
+                        
+                        
+                        k+=1
+                
+            else:
+
+                nodo.innerHTML=nodo2.innerHTML
+        
+        travese2(nodo,tpl.content.children[0])
+
         localdata={}
         process_api(that,nodo,context,localdata,doc.children[0])
 
@@ -1288,17 +1428,17 @@ window.FF=FF
 FF.signals={}
 def on(name,callback):
     if name in FF.signals:
-        console.log("vvvvvv ",name)
+      
         FF.signals[name].append(callback)
     else:
         FF.signals[name]=[callback]
 FF.on=on
 def emit(name,params):
-    console.log("mmmmm",FF.signals)
+
     if name in FF.signals:
-        console.log("RRRRRRRR",name)
+     
         for callback in FF.signals[name]:
-            console.log("KKKKKKKKKKKKK",callback)
+      
             callback(params)
 FF.emit=emit
 
@@ -1352,8 +1492,10 @@ def main(is_reload=False):
 
                 for template in body.querySelectorAll("template[name]"):
                     name = template.getAttribute("name")
+
                     data = template.getAttribute("f-data")
-               
+                    
+
                     if data:
                         data=eval("("+data+")")
                         
@@ -1381,7 +1523,6 @@ def main(is_reload=False):
 
     aplicaciones=[]
     before_render=document.body.outerHTML
-    console.log("ZZZZZZZZZZZZZZZZZZZZZZZZZZZ")
     for nodo in document.querySelectorAll("[fastfront]"):
         app=App(is_reload)
         FF.apps[nodo.idx]=app
