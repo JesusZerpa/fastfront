@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title></title>
+
+</head>
+<body>
+	<template name="componente"
+		f-data='{"product":"","condicion":true,"elementos":[1,2,3,4]}'
+	>
+		<head>
+			<link 
+			rel="import"
+			namespace="modulos" 
+			src="https://componentes/tarjeta.html">
+		
+		</head>
+		<body>
+			<f-if :condition="this.condicion">
+		 		<button onclick="establecer($id)"></button>
+		 	</f-if>
+		 	<f-else>
+		 		
+		 	</f-else>
+			<f-for :elemento="self.elementos" > 
+				<li >{{elemento}}</li>
+			</f-for>	
+		</body>
+		
+	</template>
+	<!-- use permite usar los modulos importados por link bajo el grupo de namespace -->
+	<f-widget
+		use="modulos"
+		f-data='{"product":"","condicion":true,"elementos":[1,2,3,4]}'
+	>
+		<f-component></f-component>
+		<f-if :condition="this.condicion">
+			Activado
+		</f-if>
+		<f-widget
+			use="modulos"
+			f-data='{"otra cosa":""}'
+		>
+		</f-widget>
+		<span :style="{'background-color':this.condicion?'red':'blue'}">hola mundo</span>
+		
+		
+		<f-else>
+			Desactivado
+		</f-else>
+
+		<f-for :elemento="self.elementos">
+			<h1 @click="(event)=>{ alert(elemento) }">
+				<input id="mobileno" type="text" name=""/>
+			</h1>
+		</f-for>
+
+		<button
+			@click="(event) => { console.log('oooo',this);this.condicion=!this.condicion }"
+		>
+			Hacer click
+		</button>
+
+	</f-widget>
+
+
+ 	<script>
+ 	/*
+ 	pudo manejar los bucles for como shadow ya que esto me permitiria 
+ 	que no se listara los subfor al documento queryselector 
+ 	y igual con los f-if f-elif y f-else 
+ 	*/
+
+ 	function dynamic_attr(valor){
+		let accept=[]
+            
+        if (typeof(valor)=="string"){
+            accept.push(valor)
+        }
+        else if (typeof(valor)=="number"){
+            accept.push(valor)
+        }
+        else{
+        	console.log("%%%%%%%%%",Array.isArray(valor))
+            if (Array.isArray(valor)){
+	            for (let elem in valor){
+
+	                if (typeof(elem)=="object"){
+	                    for (let attr of elem){
+	                    	console.log(">>>>>>>>>>>> ",typeof(elem[attr]))
+	                    	if (typeof(elem[attr])=='boolean'){
+	                    		if (elem[attr]){
+		                            accept.push(attr)
+		                        }
+	                    	}
+	                        else{
+	                        	accept.push(attr+":"+elem[attr]+";")
+		                        
+	                        }
+	                    }
+	                }
+	                else if (typeof(elem)=="array"){
+	                    accept.extend(elem)
+	                }
+	                else{
+	                    accept.push(elem)
+	                }
+				}
+			}
+			else{
+				console.log("VVVVVVV",valor)
+				for (let elem in valor){
+					console.log("AAAAAA",elem)
+					if (typeof(valor[elem])=='boolean'){
+						accept.push(elem)
+					}else{
+						accept.push(elem+":"+valor[elem]+";")
+					}
+					console.log("dddddscccccccc ",)
+				}
+			}
+		}
+
+		let _valor=accept.join(" ")
+		return _valor
+ 	}
+
+ 	function build_context(widget,data){
+ 		/*
+ 		Los contextos se encargan de actualizar los valores de los atributos de las directivas de sus elementos hijos
+ 		*/
+ 		//context={"__data__":None}
+	    //data2=Object.assign({"$refs":that.refs,"$stores":that.stores},data)
+	    let context={"__data__":data}
+	    function builder(widget,name,data,context){
+
+		    
+	        function get_func(){
+
+	            return data[name]
+	        }
+	        function set_func(value){
+
+	            cadena=""
+	            console.log("UUUUUUU ",name,value,widget.nodes)
+	            data[name]=value
+	            for (let node of widget.nodes[name]){
+	            	let nodo=node[0]
+	            	let directiva=node[1]
+	            	let code=node[2]
+	            	let parent=node[3]
+	            	if (["DIV","SPAN","H1"].includes(nodo.tagName)){
+	            		// atributos span normales
+	            		let cadena=""
+						for (let elem in data["__data__"]){
+							cadena+=`let ${elem}=data['${elem}'];`;
+							
+						}
+	            		let result=eval("(function(){"+cadena+";return ("+code+")})").call(context)
+	            		let _valor=dynamic_attr(result)
+	            		console.log("&&&&&&&&&",_valor,value,result,context)
+	            		nodo.setAttribute(
+	            			directiva.slice(1,),
+	            			_valor
+	            			)
+	            	}
+	            	else{
+	            		//custom elements
+	            		nodo.render()
+
+
+	            	}
+	            
+
+
+	            }
+	        }
+	 		
+	 		Object.defineProperty(context,name,{
+	            "get":get_func,
+	            "set":set_func
+	            })
+
+	 	}
+
+	 	for (let name in data){
+	 		builder(widget,name,data,context)
+	 		
+	 	}
+	 	return context
+ 	}
+	function reemplazarValores(cadena, datos){
+	    //patron = RegExp(r"{{\s*(.*?)\s*}}","g");
+	    patron = RegExp("\{\{\s*([^{}.]+(?:\.[^{}.]+)*)\s*\}\}","g");
+	    let response
+	    
+    	function reemplazo(match, p1){
+    		
+	        clave = p1.trim();
+	        if (clave.indexOf(".")>-1){
+	            response=datos
+
+	            for (let elem of clave.split(".")){
+	            	if (response[elem]!=undefined){
+	                    response=response[elem]
+	                }
+	            }
+	                
+	            if (typeof(response)=="object"){
+	            	response=JSON.stringify(response)
+	            }
+	                
+	            return response
+	         }
+	        else if(clave.indexOf("[")>-1){
+	        	clave=clave.strip()
+	            result=eval("const { "+",".join(datos.keys())+" } = datos; "+clave)
+	            return result
+	        }
+	            
+	        else{
+	        	response=datos[clave]
+	        }
+	        
+	        if (response!=undefined){
+	            if (typeof(response)=="object"){
+
+
+	                //Esto se hace para evitar la recursividad al hacer
+	                // stringify por el attributo $store
+
+	                response2=Object.assign({},response)
+
+	                //del response2["$stores"]
+	                
+	                response2=JSON.stringify(response2)
+	                return response2
+	                }
+	            else{
+	                return response.toString()
+	            }
+	        }
+	        else{
+	            return  "";
+	        }
+	    }
+	    resultado = cadena["replace"](patron, reemplazo);
+	    
+	    return resultado;
+	}
+	function travese(nodo,data,localdata,root=null){
+		nodo.root=root
+		for (let elem of nodo.children){
+			if (root){
+				elem.root=root
+			}
+			let is_custom=false;
+			if ([
+				"DIV","SPAN","H1","H4","BUTTON","INPUT"
+				].includes(elem.tagName)
+				){
+
+			}
+			else{
+				console.log("wwww",[elem])
+				is_custom=true
+				elem.render()
+			}
+
+
+			for (let attr of elem.attributes){
+				if (attr.name.startsWith(":")){
+					for (let key in data["__data__"]){
+						if (attr.value.includes(key)){
+							if (root.nodes[key]){
+								if (is_custom){
+									root.nodes[key].push(
+										[elem,attr.name,attr.value,elem.parent]
+									)
+
+								}else{
+									root.nodes[key].push(
+										[elem,attr.name,attr.value,elem.parentNode]
+									)
+								}
+								
+							}
+							else{
+								if (is_custom){
+									root.nodes[key]=[
+										[elem,attr.name,attr.value,elem.parent]
+									]
+								}else{
+									root.nodes[key]=[
+										[elem,attr.name,attr.value,elem.parentNode]
+									]
+								}
+								
+								
+							}
+							
+						}
+					}
+					
+					
+					if (!is_custom){
+						console.log("ZZZZZZZZZZ",attr.value)
+						let valor=eval("("+attr.value+")")
+						valor=dynamic_attr(valor)		
+						elem.setAttribute(attr.name.slice(1,),valor)
+				
+					}
+					
+					
+					
+					//elem.removeAttribute(attr.name)
+				}
+				if (attr.name.startsWith("@")){
+					function build(context,localdata){
+						return function(event){
+							let code=event.target.getAttribute(attr.name)
+							
+							console.log("xxxx",data,localdata)
+							let cadena=""
+							for (let elem in data["__data__"]){
+								cadena+=`let ${elem}=data['${elem}'];`;
+								
+							}
+							for (let elem in localdata){
+								cadena+=`let ${elem}=localdata['${elem}'];`;
+								
+							}
+							eval("(function(event,localdata){"+cadena+"("+code+")(event)})").call(data,event,localdata)
+
+							console.log("EJECUTANDO",event.target)
+
+						}
+					}
+					let fn=build(data,localdata)
+					console.log("$$$$$$$$$$$$$$$$$$$$4",nodo,attr.name,elem)
+					elem.addEventListener(attr.name.slice(1,),fn)
+				}
+			if (!is_custom){
+				travese(elem,data,localdata,root)
+			}
+			
+			}
+		}
+	}
+	function updater(nodo,data,localdata,root=null){
+		nodo.root=root
+		for (let elem of nodo.children){
+			if (root){
+				elem.root=root
+			}
+			let is_custom=false;
+			if ([
+				"DIV","SPAN","H1","H4","BUTTON","INPUT"
+				].includes(elem.tagName)
+				){
+
+			}
+			else{
+				console.log("wwww",[elem])
+				is_custom=true
+				elem.render()
+			}
+
+
+			for (let attr of elem.attributes){
+				if (attr.name.startsWith(":")){
+					for (let key in data["__data__"]){
+						if (attr.value.includes(key)){
+							if (root.nodes[key]){
+								if (is_custom){
+									root.nodes[key].push(
+										[elem,attr.name,attr.value,elem.parent]
+									)
+
+								}else{
+									root.nodes[key].push(
+										[elem,attr.name,attr.value,elem.parentNode]
+									)
+								}
+								
+							}
+							else{
+								if (is_custom){
+									root.nodes[key]=[
+										[elem,attr.name,attr.value,elem.parent]
+									]
+								}else{
+									root.nodes[key]=[
+										[elem,attr.name,attr.value,elem.parentNode]
+									]
+								}
+								
+								
+							}
+							
+						}
+					}
+					
+					
+					if (!is_custom){
+						valor=eval(attr.value)
+						elem.setAttribute(attr.name.slice(1,))
+				
+					}
+					
+					
+					
+					//elem.removeAttribute(attr.name)
+				}
+				if (attr.name.startsWith("@")){
+					
+				}
+
+			updater(elem,data,localdata,root)
+			}
+		}
+	}
+	class HolaMundo extends HTMLElement{
+		constructor(){
+			super()
+			console.log("iiiiii")
+		}
+		connectedCallback(){
+			this.innerHTML="<H1>Hola Mundo con un web Component</H1>"
+		}
+
+	}
+	class FComponent extends HTMLElement{
+		constructor(){
+			super()
+			console.log("eeeeeee")
+
+		}
+		connectedCallback(){
+			console.log("SSSSSSSSSSS")
+			this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
+		}
+		render(){
+
+		}
+
+	}
+	class FWidget extends HTMLElement{
+		constructor(){
+			super()
+			if (this.getAttribute("f-data")){
+				let data=eval("("+this.getAttribute("f-data")+")")
+				this.data=data
+				this.nodes={}
+				this.context=build_context(this,this.data)
+				console.log("PPPPPP ",this.data)
+			}
+
+
+			
+		}
+		connectedCallback(){
+			//this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
+			travese(this,this.context,{},this)
+			console.log(">>>>>>",this,this.root)
+
+
+			
+		}
+		render(){
+			updater(this,this.context,{},this)
+
+		}
+
+	}
+	class FIf extends HTMLElement{
+		constructor(){
+			super()
+
+			this.template=this.innerHTML
+			this.condition=this.getAttribute(":condition")
+
+			this.parent=this.parentNode
+			let start=false
+			for (let elem of this.parent.children){
+				if (elem==this){
+					start=true
+				}
+				if (start && elem.tagName=="F-ELSE"){
+					this.else=elem
+					break
+				}
+			}
+			
+			
+		}
+		connectedCallback(){
+			
+			
+		}
+		render(){
+			let cadena=""
+			for (let elem in this.root.context["__data__"]){
+				cadena+=`let ${elem}=this['${elem}'];`;
+				
+			}
+			let valid=eval("(function(){"+cadena+";return "+this.condition+"})").call(this.root.context)
+
+			console.log("qqqqqq ",valid,this.condition,this.parentNode)
+			this.parent.condition=valid
+			if (this.parentNode==undefined){
+				//significa que hemos comprobado la condicion anterior mente
+				if (valid){
+					this.parent.appendChild(this)	
+				}
+
+			}
+			else{
+				if (!valid){
+					this.parentNode.removeChild(this)
+				}
+				else{
+					
+					this.parent.appendChild(this)
+				}
+			}
+			this.else.render()
+			
+		}
+	}
+	class FElif extends FIf{
+		constructor(){
+			super()
+		}
+	}
+	class FElse extends HTMLElement{
+		constructor(){
+			super()
+			console.log("eeeeeee2",this.innerHTML)
+			this.template=this.innerHTML
+			this.parent=this.parentNode
+		}
+		connectedCallback(){
+			if (this.parentNode.condition){
+				this.parentNode.remove(this)
+			}
+		}
+		render(){
+			console.log("KKKKKKKKKKKKKKKK",this.parent.condition,this.parent)
+			if (this.parent.condition){
+				this.remove()
+			}
+			else if(this.parentNode==undefined){
+				this.parent.appendChild(this)
+			}
+
+		}
+	}
+	class FFor extends HTMLElement{
+		constructor(){
+			console.log("TTTTTTTTTTTTTT")
+			super()
+			console.log("eeeeeee3",this.innerHTML,this.root)
+			this.template=this.innerHTML
+			this.parent=this.parentNode
+			this.mounted=false
+		}
+		connectedCallback(){
+			
+
+			//this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
+			
+		}
+		attributeChangedCallback(){
+
+		}
+		render(){
+			console.log("dddd",this.root.data)
+			console.log(this.innerHTML)
+			let iterable={}
+			let valor=null
+			let name=null
+			console.log("xxxxx ",this.attributes)
+			for (let attr of this.attributes){
+
+				if (attr.name.startsWith(":")){
+						if (attr.name!=":id" 
+							&& attr.name!=":class" 
+							&& attr.name!=":style"
+							&& attr.name!=":key"){
+							console.log("fffff",attr.value)
+							valor=eval("((self)=>{ return "+attr.value+"})").call(null,this.root.data)
+							console.log("TTTTT",valor)
+							name=attr.name.slice(1,)
+
+							break
+
+					}
+				}
+				
+			}
+			console.log("rrr")
+			let template=this.innerHTML
+			console.log("sssss ",valor)
+			this.innerHTML=""
+			for (let elem in valor){
+				console.log("BBBBBBBBBBBB")
+				if (typeof(elem)!="object"){
+					eval("let "+name+`=${elem}`)
+				}
+				else{
+					eval("let "+name+"="+elem)
+				}
+				let d={}
+				d[name]=elem
+
+				let template_temp=reemplazarValores(template,d)
+				let node_template=document.createElement("template")
+				
+				node_template.innerHTML=template_temp
+				console.log(node_template,this.mounted)
+				
+				if (this.mounted){
+					updater(node_template.content,this.root.context,d)
+				}
+				else{
+					travese(node_template.content,this.root.context,d)
+					
+				}
+				
+
+				this.appendChild(node_template.content)
+				
+			}
+			this.mounted=true
+			if (document.querySelector("input")){
+				console.log("FOCUS")
+				document.querySelector("input").focus()
+			}
+			
+			
+		}
+
+	}
+
+	window.customElements.define("hola-mundo",HolaMundo)
+	window.customElements.define("f-component",FComponent)
+	window.customElements.define("f-for",FFor)
+	window.customElements.define("f-if",FIf)
+	window.customElements.define("f-else",FElse)
+	window.customElements.define("f-widget",FWidget)
+
+</script>
+
+</body>
+</html>

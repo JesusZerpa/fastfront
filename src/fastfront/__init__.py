@@ -134,17 +134,179 @@ def build_context(that,data,nodo,template,padre={}):
         def get_func():
             return data2[name]
         def set_func(value):
-      
+            cadena=""
+
+            
+            for _name in context.__data__:
+                cadena+=f"let {_name}=self.{_name};"
+
             that.render_idx=nodo.idx
+            """
             data[name]=value
             data2[name]=value
             if padre[name]!=undefined:
          
                 padre[name]=value
                 return 
-      
-            that.update(context,nodo,template)
-        context["__data__"]["$set_"+name]=set_func
+            """
+            console.log("XXXXX",name,that.nodes[name])
+            if that.nodes[name]:
+                for node in that.nodes[name]:
+                    console.log("PPPPPP",node)
+                    node[0]
+                    directiva=node[1]
+                    console.log("&&&&&& ",directiva)
+                    if directiva=="f-for":
+                        """
+                        parent=node[2]
+                        txt=node[0].dataset[name]
+                        localdata=node[5]
+                        idx=node[6]
+                        node=node[0]
+                        #fnode,"f-for",mount,before,_next,localdata,indexOf(fnode)
+                        console.log("ddddd ",node,idx,parent,"&&&& ",parent.childNodes[idx])
+                        if idx>-1:
+                            if parent.childNodes[idx].__proto__.constructor.name!="Text" and parent.childNodes[idx].__proto__.constructor.name!="Comment":
+                                parent.insertBefore(parent.childNodes[idx],node)
+                        else:
+                            parent.appendChild(node)
+
+                        #that,node,context,idx,localdata,lock,mount=None
+                        process_for(that,node,context,idx,localdata,False,parent)
+                        """
+
+                    elif directiva=="f-if" or directiva=="f-elif" or directiva=="f-else":
+                        """
+                        parent=node[2]
+                        txt=node[0].dataset[name]
+                        localdata=node[4]
+                        idx=node[5]
+                        node=node[0]
+                        
+                        for _name in localdata:
+                            if "." not in _name:
+                                cadena+=f"let {_name}=_localdata['{_name}'];"
+
+                        result=eval("(function(_localdata){ let self = this ;"+cadena+";return "+txt+"})").call(context["__data__"],localdata)
+                     
+                        if result:
+                            if idx>-1:
+                                parent.insertBefore(idx,node)
+                            else:
+                                parent.appendChild(node)
+                        condition={"condition":False}
+                        process_if(that,node,context,localdata,condition,parent)
+                        """
+
+                    
+
+
+                    elif directiva.startswith(":"):
+                        
+                        txt=node[0].dataset[name]
+                        localdata=node[3]
+                        console.log("qqqqqqqqqqqqq",localdata)
+                        for _name in localdata:
+                            if "." not in _name:
+                                cadena+=f"let {_name}=_localdata['{_name}'];"
+                        console.log("zzzzzzz")
+                        console.log("(function(context,_localdata){ let self = this ; return })")
+                        #data=context["__data__"]
+                        valor=eval("(function(context,_localdata){ let self = this ; return })").call(None,{},localdata)
+                        
+                        accept=[]
+                        """
+                        console.log("rrrrrrrrrrrr",valor)
+                        if typeof(valor)=="string":
+                            accept.append(valor)
+                        elif typeof(valor)=="number":
+                            accept.append(valor)
+                        else:
+                            for elem in valor:
+
+                                if typeof(elem)=="object":
+                                    for attr in elem:
+                                        if elem[attr]:
+                                            accept.append(attr)
+                                elif typeof(elem)=="array":
+                                    accept.extend(elem)
+                                else:
+                                    accept.append(elem)
+                        """
+                        _valor=" ".join(accept)
+                        console.log("aaaaaaaa",_valor)
+                        
+
+                        if name=="value":
+                            node[0]._value=valor
+                        else:
+                            console.log("YYYYYYY",node[0],name,node[1][1:],_valor)
+                            node[0].setAttribute(node[1][1:],_valor)
+
+                    elif directiva.startswith("@"):
+                        """
+                        console.log("ddddddddd",node[0].data)
+                        txt=node[0].dataset[name]
+                        localdata=node[3]
+                        
+                        for _name in localdata:
+                            if "." not in _name:
+                                cadena+=f"let {_name}=_localdata['{_name}'];"
+
+                        valor=eval("(function(_localdata){ let self = this ;"+cadena+"; return "+txt+"})").call(context["__data__"],localdata)
+                       
+                        accept=[]
+                        if typeof(valor)=="string":
+                            accept.append(valor)
+                        elif typeof(valor)=="number":
+                            accept.append(valor)
+                        else:
+                            for elem in valor:
+
+                                if typeof(elem)=="object":
+                                    for attr in elem:
+                                        if elem[attr]:
+                                            accept.append(attr)
+                                elif typeof(elem)=="array":
+                                    accept.extend(elem)
+                                else:
+                                    accept.append(elem)
+                        _valor=" ".join(accept)
+
+                        if name=="value":
+                            node[0]._value=valor
+                        else:
+                            console.log("YYYYYYY",node[0],name,_valor)
+                            node[0].setAttribute(name,_valor)
+                        """
+
+                    elif directiva==None:
+                        """
+                        localdata=node[2]
+                        txt=node[3]
+                        result=eval(cadena+";"+txt).call(context,localdata)
+
+                        if nodo.__proto__.constructor.name!="Text" \
+                            and nodo.__proto__.constructor.name!="Comment":
+                            
+                            nodo.innerHTML=reemplazarValores(result,
+                                Object.assign({},context["__data__"],localdata))
+
+                        elif nodo.__proto__.constructor.name=="Text":
+                            
+                            nodo.nodeValue=reemplazarValores(result,
+                                Object.assign({},context["__data__"],localdata))
+                        """
+
+
+
+
+
+
+            console.log("MMMMMMMMMMMM ",name,that.nodes[name])
+            #that.update(context,nodo,template,None,None,False)
+
+
 
         Object.defineProperty(context,name,{
             "get":get_func,
@@ -311,7 +473,6 @@ def process_api(that,nodo,context,localdata,doc=None):
         
         async def trigger(event):
             data={}
-            console.log("HHHHHHHHHHHHH")
             if event!=undefined:
                 event.preventDefault()
                 event.stopPropagation()
@@ -344,11 +505,7 @@ def process_api(that,nodo,context,localdata,doc=None):
              
 
             elif fpost!=None:
-                console.log("EEEEEEEEEEEEEE",{"method":"POST",
-                        "headers":fhead,
-                        "body":JSON.stringify(data)
-                        }
-                        )
+
                 if fhead["Content-Type"]=="application/json":
                     req=await fetch(fpost,{"method":"POST",
                         "headers":fhead,
@@ -411,17 +568,16 @@ def process_api(that,nodo,context,localdata,doc=None):
                     
                     if attr.name.startswith("f-reponse:"):
                         field=attr.name.split(":")
-                        console.log("ddddd ",f"({fresponse})")
+
                         context[field[1]]=eval(f"({fresponse})").call(None,data,fkey)#lambda data:data.rows
-                console.log("$$$$$$$ ",fsuccess)
+
                 if fresponse:
                     field=fresponse_name.split(":")
                     response=eval(f"({fresponse})").call(None,data,fkey)#lambda data:data.rows
-                    console.log("wwwww ",response)
+                    console.log("ooooooo ",field[1],response)
                     context[field[1]]=response
-                    console.log("YYYYY ",context)
                 if fsuccess:
-                    console.log("WWWWWWW")
+
                     eval("(function(data,_localdata){"+f"let self=this;"+cadena+f" {fsuccess} "+"})").call(context,data,localdata)
                 
 
@@ -455,14 +611,17 @@ def process_api(that,nodo,context,localdata,doc=None):
         
             
     pass
-def process_for(that,node,context,idx,localdata,lock):
+def process_for(that,node,context,idx,localdata,lock,mount=None):
     """
     El problema de usar self ajuro es que para los condicionales no se sabe cual 
     """
     fnode=node
+    parent=node.parentNode
     forval=node.getAttribute("f-for")
     elem,iterable=forval.split(" in ")
-    
+
+
+    console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",node,parent,mount)
     cadena=""
 
 
@@ -494,25 +653,61 @@ def process_for(that,node,context,idx,localdata,lock):
             console.log(node.outerHTML)
             console.warn("Recordar que las variables de contextos se usan desde el objeto 'self' ejemplo: self.attributo")
     
+    fnode.dataset[iterable]=fnode.getAttribute("f-for")
+    before=fnode.previousSibling
+    _next=fnode.previousNext
+    # FOR DE PRIMER NIVEL
+    if iterable not in that.nodes:
+        
+        that.nodes[iterable]=[[
+            fnode,"f-for",parent,before,_next,localdata,indexOf(fnode)]]
+
+    else:
+
+        nodes=[]
+
+        for n in that.nodes[iterable]:
+            if mount!=n[2]:
+                nodes.append(n) 
+
+        that.nodes[iterable]=nodes
+
+        if mount:
+            that.nodes[iterable].append([
+                fnode,"f-for",mount,before,_next,localdata,indexOf(fnode)])
+        else:
+            that.nodes[iterable].append([
+                fnode,"f-for",parent,before,_next,localdata,indexOf(fnode)])
+
+    console.log("vvvvvvvvvv",mount,that.nodes[iterable])
     if "(" in elem and ")" in elem:
         k,v=elem.strip()[1:-1].split(",") 
+
+
         
         
-        parent=node.parentNode
         nuevos=[]
+        idx=indexOf(fnode) 
+
+
         for k2,valor in enumerate(iterador):
             #localdata[v]=valor    
             clon=fnode.cloneNode(True)
             #lo quitamos antes de el travese para que el nodo se
             #procese con process_attr
             clon.removeAttribute("f-for")
-            node.removeAttribute("f-for")
 
             data={k.strip():k2,v.strip():valor}
             data.update(localdata)
+            
+
             #clon.removeAttribute("f-for")
             travese(that,clon,context,idx,data,lock,)
-            parent.insertBefore(clon,node)
+            console.log("*********",mount,clon,node,parent)
+            if mount:
+                mount.insertBefore(clon,node)
+            else:
+                parent.insertBefore(clon,node)
         
         if parent:
             parent._for=True
@@ -525,6 +720,10 @@ def process_for(that,node,context,idx,localdata,lock):
 
     else:
         v=elem.strip() 
+
+        
+
+
         l=[]
         for valor in iterador:
             
@@ -533,8 +732,19 @@ def process_for(that,node,context,idx,localdata,lock):
             clon.removeAttribute("f-for")
             data={v:valor}
             data.update(localdata)
-            if node.parentNode:
-                node.parentNode.insertBefore(clon,node)
+            console.log("++++++++++++",mount,parent,clon,node)
+            if mount:
+                try:
+                    mount.insertBefore(clon,node)
+                except:
+                    mount.append(clon)
+
+            else:
+                try:
+                    parent.insertBefore(clon,node)
+                except:
+                    mount.append(clon)
+
             l.append([clon,data])
             
             #clon.removeAttribute("f-for")
@@ -547,17 +757,64 @@ def process_for(that,node,context,idx,localdata,lock):
     fnode.remove()
 
 
-
+def indexOf(nodo):
+    k=0
+    if nodo.parentNode:
+        for n2 in nodo.parentNode.childNodes:
+            if n2==nodo:
+                return k
+            k+=1
+    return -1
 
 
 def process_attr(that,nodo,context,idx,localdata,lock,condition={}):
     #nodo,context,idx,data,localdata
+    console.log("*********************",nodo)
     binds={}
      #deberia ser el contexto padre o algo asi ver mas tarde
 
     data=that.states[idx]
     #Atributos no componentes
     componente=nodo.getAttribute("f-component")
+    
+    fif=nodo.getAttribute("f-if")
+    felif=nodo.getAttribute("f-elif")
+    felse=nodo.getAttribute("f-else")
+
+
+    for n in ["f-if","f-else","f-elif","f-model","f-action",
+              "f-component","f-payload","f-show","f-hidden","f-ref",
+              "f-store",":class",":style",":id","@click","@change",
+              "@keyup","@enter","@keydown"]:
+        
+        txt=nodo.getAttribute(n)
+
+        for name in context["__data__"]:
+
+            if txt and name in txt:
+                idx=None
+
+
+                if n=="f-if":
+                    
+                    idx=indexOf(n)
+
+                if name not in that.nodes:
+                    nodo.dataset[name]=txt
+                    that.nodes[name]=[[nodo,n,txt,localdata,idx]]
+                else:
+                    nodo.dataset[name]=txt
+                    console.log("@@@@@@@@@@@@@@@@@@@",nodo,name)
+                    that.nodes[name].append([nodo,n,txt,localdata,idx])
+    start = Date();
+    
+    if fif or felif or felse:
+        if not process_if(that,nodo,context,idx,localdata,condition):
+            return 
+        nodo._render=True
+
+    
+
     def build(context,value,name,that):              
         def change(event):
             """
@@ -578,7 +835,6 @@ def process_attr(that,nodo,context,idx,localdata,lock,condition={}):
                 context[value]=event.target.value
                 
             else:
-                console.log("ttttt ",context["__data__"],"$set_"+value)
                 if event.target._value:
                     if "." in value:
                         c=context
@@ -651,10 +907,7 @@ def process_attr(that,nodo,context,idx,localdata,lock,condition={}):
             eval("(function(_localdata){self=this;"+cadena+"; return "+attr.value+" })").call(context,localdata)
             nodo.style.opacity = "0";
             nodo._render=True
-        if attr.name=="f-if":
-            
-            process_if(that,nodo,context,idx,localdata,condition)
-            nodo._render=True
+        
             
         
         if attr.name.startswith("f-model"):
@@ -669,18 +922,19 @@ def process_attr(that,nodo,context,idx,localdata,lock,condition={}):
 
             change=build(context,attr.value,attr.name,that)
             nodo_type=nodo.getAttribute("type")
-            """
+
             if nodo_type=="text" or nodo_type=="textarea":
                 nodo.addEventListener("keyup",change)
             else:
                 nodo.addEventListener("change",change)
-            """
-            nodo.addEventListener("change",change)
+            
             nodo._render=True
             nodo._model=True
             #nodo.removeAttribute(attr.name)
     
 
+
+    
     for name in binds:
         
         nodo.removeAttribute(":"+name)
@@ -800,21 +1054,24 @@ def process_attr(that,nodo,context,idx,localdata,lock,condition={}):
         that.nodes[nodo.idx]={"nodo":nodo,"componente":componente}
         that.update(context2,nodo,template) 
     else:
-        
+        """
         for comp in nodo.childNodes:
             if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
                 
                 travese(that,comp,context,idx,localdata,lock)
-        
-        
+                pass
+        """
+    end = Date();
+    diff=end.getTime() - start.getTime()
+    
     # ======  End of Section Subcomponentes  =======        
 
 
 
 def process_if(that,node,context,idx,localdata,condition={}):
-    node_if=node.getAttribute("f-if")
-    node_elif_before=None
+
     cadena=""
+    _remove=False
     for name in localdata:
         if "." not in name:
             cadena+=f"let {name}=_localdata['{name}'];"
@@ -822,39 +1079,34 @@ def process_if(that,node,context,idx,localdata,condition={}):
         if "." not in name:
             cadena+=f"let {name}=self.{name};"
 
-    node2=node
+    console.log("###################################################33",node)
 
-    node_if=node2.hasAttribute("f-if")
+    node_if=node.hasAttribute("f-if")
 
-    node_elif=node2.hasAttribute("f-elif")
+    node_elif=node.hasAttribute("f-elif")
 
-    node_else=node2.hasAttribute("f-else")
-    
-    _remove=True
+    node_else=node.hasAttribute("f-else")
+
 
     if  node_if:
-        _if=node2.getAttribute("f-if")
+        
+        _if=node.getAttribute("f-if")
         valor=eval("(function(_localdata){"+f"let self=this; {cadena} return {_if}"+"})").call(context,localdata)
-        console.log("FFFFF",valor,context,localdata,_if)
-        condition=valor
-        if condition:
+        
+        if valor:
             condition["condition"]=True
-        if not condition:
-            node2.remove()
+        
 
-            console.log("iiii",_remove)
-        console.log("nnnnnnnnnnnnn",valor,condition,_remove)
     elif node_elif:
-        _elif=node2.getAttribute("f-elif")
+        
+        _elif=node.getAttribute("f-elif")
         valor=eval("(function(_localdata){"+f"let self=this; {cadena} return {_elif}"+"})").call(context,localdata)
 
-        if not condition and valor==True:
+        if not condition["condition"] and valor==True:
+            condition["condition"]=True
 
-            condition=valor
-        elif condition:
-
-            node2.remove() 
         nodo2._render=True
+
     elif condition and not node_else and node_elif:#elif
         
         _remove=True
@@ -863,21 +1115,34 @@ def process_if(that,node,context,idx,localdata,condition={}):
         
         _remove=True
         pass
+    
+    if not condition["condition"]:
+        node.remove()
+    else:
+        if node.hasAttribute("f-if"):
+            node.removeAttribute("f-if") 
+        if node.hasAttribute("f-elif"):
+            node.removeAttribute("f-elif")
+        if node.hasAttribute("f-else"):
+            node.removeAttribute("f-else") 
 
-    if node2.hasAttribute("f-if"):
-        node2.removeAttribute("f-if") 
-    if node2.hasAttribute("f-elif"):
-        node2.removeAttribute("f-elif")
-    if node2.hasAttribute("f-else"):
-        node2.removeAttribute("f-else") 
+    return _remove
 
         
 
         
 
 def travese(that,nodo,context,idx,localdata={},lock=False,condition={}):
-
-    process_api(that,nodo,context,localdata)
+    deep+=1
+    cadena=""
+    console.log("lllllll",nodo)
+    for name in localdata:
+        if "." not in name:
+            cadena+=f"let {name}=_localdata['{name}'];"
+    for name in context.__data__:
+        if "." not in name:
+            cadena+=f"let {name}=self.{name};"
+    #process_api(that,nodo,context,localdata)
     if nodo.__proto__.constructor.name=="Text":
         
         nodo.nodeValue=reemplazarValores(nodo.nodeValue,
@@ -885,109 +1150,102 @@ def travese(that,nodo,context,idx,localdata={},lock=False,condition={}):
         return nodo
     if nodo.__proto__.constructor.name=="Comment":
         return 
-    if not lock:
-        cadena=""
-        for name in localdata:
-            if "." not in name:
-                cadena+=f"let {name}=_localdata['{name}'];"
-        for name in context.__data__:
-            if "." not in name:
-                cadena+=f"let {name}=self.{name};"
+    
+        
 
-        for attr in nodo.attributes:
-            attr= nodo.attributes[attr]
-            if attr.name.startswith("@"):
-                value=attr.value
-                if "." in attr.name:
-                    event=attr.name.split(".")[0][1:]
-                    modifiers=attr.name.split(".")[1]
-                    """
-                    nodo.addEventListener(attr.name[1:],
-                        lambda event: eval("(function(){self=this; "+value+" })").call(context) )
-                    """
-                    
+    for attr in nodo.attributes:
+        attr= nodo.attributes[attr]
+        if attr.name.startswith("@"):
 
-                    def evento(event):
-                        for elem in modifiers:
-                            if elem=="stop":
-                                event.stopPropagation()
-                            elif elem=="prevent":
-                                event.preventDefault()
-                            elif elem=="caputre":
-                                pass
-                            elif elem=="once":
-                                pass
-                            elif elem=="passive":
-                                pass
-                            elif elem=="enter":
-                                pass
-                            elif elem=="tab":
-                                pass
-                            elif elem=="esc":
-                                pass
-                            elif elem=="space":
-                                pass
-                            elif elem=="up":
-                                pass
-                            elif elem=="down":
-                                pass
-                            elif elem=="left":
-                                pass
-                            elif elem=="right":
-                                pass
-                            elif elem=="middle":
-                                pass
-                            elif elem=="ctrl":
-                                pass
-                            elif elem=="alt":
-                                pass
-                            elif elem=="meta":
-                                pass
-                            elif elem=="exact":
-                                pass
+            value=attr.value
+            if "." in attr.name:
+                event=attr.name.split(".")[0][1:]
+                modifiers=attr.name.split(".")[1]
+                """
+                nodo.addEventListener(attr.name[1:],
+                    lambda event: eval("(function(){self=this; "+value+" })").call(context) )
+                """
+                
 
-
-                        return eval("(function(event,_localdata){let self=this; "+cadena+" "+value+" })").call(context,event,localdata) 
-                    nodo.addEventListener(attr.name[1:],evento)
-                    nodo._render=True
-                else:
-
-                    """
-                    nodo.addEventListener(attr.name[1:],
-                        lambda event: eval("(function(){self=this; "+value+" })").call(context) )
-                    """
-                    
-                    def build(context,localdata):
-                        def evento(event):
-                            before_state={}
-                            for n in context["__data__"]:
-                                if not n.startswith("$"):
-                                    before_state[n]=context["__data__"][n]
-                            before_state=JSON.stringify(before_state)
-                            eval("(function($event,_localdata){let self=this;"+cadena+"; console.log('llllll',$event);"+value+" })").call(context,event,localdata) 
-                            for n in context["__data__"]:
-                                if not n.startswith("$"):
-                                    if typeof(context["__data__"][n])=="object" and before_state[n]!=JSON.stringify(context["__data__"][n]):
-                                        #solo seria necesario una vez puesto que __data__
-                                        #ya tiene todos los cambios
-                                        context[n]=context["__data__"][n]
-                                        break
-                        return evento
-                    evento=build(context,localdata)
-                    nodo.addEventListener(attr.name[1:],evento)
-                    nodo._render=True
-            if attr.name.startswith(":"):
-
-                if attr.name==":value":
-                    result=eval("(function(_localdata){let self=this;"+cadena+" ;"+attr.value+" })").call(context,localdata)
-                    nodo._value=result
-
+                def evento(event):
+                    for elem in modifiers:
+                        if elem=="stop":
+                            event.stopPropagation()
+                        elif elem=="prevent":
+                            event.preventDefault()
+                        elif elem=="caputre":
+                            pass
+                        elif elem=="once":
+                            pass
+                        elif elem=="passive":
+                            pass
+                        elif elem=="enter":
+                            pass
+                        elif elem=="tab":
+                            pass
+                        elif elem=="esc":
+                            pass
+                        elif elem=="space":
+                            pass
+                        elif elem=="up":
+                            pass
+                        elif elem=="down":
+                            pass
+                        elif elem=="left":
+                            pass
+                        elif elem=="right":
+                            pass
+                        elif elem=="middle":
+                            pass
+                        elif elem=="ctrl":
+                            pass
+                        elif elem=="alt":
+                            pass
+                        elif elem=="meta":
+                            pass
+                        elif elem=="exact":
+                            pass
+                    console.log("EVENT: (function(event,_localdata){let self=this; "+cadena+" "+value+" })")
+                    return eval("(function(event,_localdata){let self=this; "+cadena+" "+value+" })").call(context,event,localdata) 
+                nodo.addEventListener(attr.name[1:],evento)
                 nodo._render=True
+            else:
+
+                """
+                nodo.addEventListener(attr.name[1:],
+                    lambda event: eval("(function(){self=this; "+value+" })").call(context) )
+                """
+                
+                def build(context,localdata):
+                    def evento(event):
+                        before_state={}
+                        for n in context["__data__"]:
+                            if not n.startswith("$"):
+                                before_state[n]=context["__data__"][n]
+                        before_state=JSON.stringify(before_state)
+                        eval("(function($event,_localdata){let self=this;"+cadena+";"+value+" })").call(context,event,localdata) 
+                        for n in context["__data__"]:
+                            if not n.startswith("$"):
+                                if typeof(context["__data__"][n])=="object" and before_state[n]!=JSON.stringify(context["__data__"][n]):
+                                    #solo seria necesario una vez puesto que __data__
+                                    #ya tiene todos los cambios
+                                    context[n]=context["__data__"][n]
+                                    break
+                    return evento
+                evento=build(context,localdata)
+                nodo.addEventListener(attr.name[1:],evento)
+                nodo._render=True
+        if attr.name.startswith(":"):
+
+            if attr.name==":value":
+                result=eval("(function(_localdata){let self=this;"+cadena+" ;"+attr.value+" })").call(context,localdata)
+                nodo._value=result
+
+            nodo._render=True
 
 
 
     if len(nodo.children)==0:
-        
         
         nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
         
@@ -1001,6 +1259,7 @@ def travese(that,nodo,context,idx,localdata={},lock=False,condition={}):
         else:
             
             process_attr(that,nodo,context,idx,localdata,lock,condition)
+            pass
     else:
         
         if nodo.getAttribute("f-for"):
@@ -1010,18 +1269,57 @@ def travese(that,nodo,context,idx,localdata={},lock=False,condition={}):
         else:
             
             process_attr(that,nodo,context,idx,localdata,lock,condition)
-        """
-        console.log("wwwwwwwwwwwwwww",localdata)
-        for comp in nodo.childNodes:
-            if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
-                console.log("CCCCCCCCCCC ",comp,localdata,nodo)
-                travese(that,comp,context,idx,localdata,lock)
-        """
+            pass
+    console.log("#### ",nodo.childNodes)
+    for comp in nodo.childNodes:
 
+        travese(that,comp,context,idx,localdata,lock)
         
-            
+    """
+    for comp in nodo.childNodes:
+        if comp.idx==undefined:# Esto evita que se atravisen nodos ya procesados en un travese anterior
+            console.log("CCCCCCCCCCC ",comp,localdata,nodo)
+            travese(that,comp,context,idx,localdata,lock)
+    """
+def build(code,context,localdata={}):
+    def wrapper(event):
+        cadena=""
+        for name in context["__data__"]:
+            cadena=f"let {name}=self['{name}']"
+        for name in localdata:
+            cadena=f"let {name}=_localdata['{name}']"
+        return eval("(self,_localdata)=>{"+cadena+";return "+code+"}").call(None,context,localdata)
+        
+    return wrapper
+        
+def explore(that,nodo,parent,context,localdata={}):
+    console.log("++++++++ ",nodo)
+    if nodo:
+        for elem in nodo.childNodes:
+            directives={}
+            console.log("ppppp",elem.__proto__.constructor)
+            if (elem.__proto__.constructor.name!="Comment" 
+                and  elem.__proto__.constructor.name!="Text"):
 
-            
+                for direct in ["f-for","f-if"]:
+                    directives[direct]=nodo.getAttribute(direct)
+                removes=[]
+                for attr in Object.values(elem.attributes):
+                    console.log("qqqqqqq",attr)
+                    if attr.name[0]==":":
+                        result=build(attr.value,context,localdata)()
+                        nodo.setAttribute(attr.name[1:])
+                        removes.append(attr.name)
+                    elif attr.name[0]=="@":
+                        listener=build(attr.value,context,localdata)
+                        nodo.addEventListener(attr.name[1:],
+                            listener)
+                for r in removes:
+                    nodo.removeAttribute(r)
+
+            explore(that,elem,nodo,context,localdata={})
+
+                
 
             
 
@@ -1029,9 +1327,24 @@ def travese(that,nodo,context,idx,localdata={},lock=False,condition={}):
 
     
 
+deep=0
 
+def sleep(ms):
+    def promise(resolve):
+        return setTimeout(resolve, ms)
+    return Promise( promise )
     
+"""
+const observer = new MutationObserver(function(mutations) {
+  mutations.forEach(function(mutation) {
+    if (mutation.type === 'childList' && mutation.target === nodo) {
+      // Recorrer el nodo aquí
+    }
+  });
+});
 
+
+"""
 class App:
     View=View
     Snippet=Snippet
@@ -1187,7 +1500,6 @@ class App:
                     "data":data
                 }
         else:
-            console.log(TEMPLATES)
             for template_name in TEMPLATES:
                 
                 template=TEMPLATES[template_name]
@@ -1214,7 +1526,6 @@ class App:
                 "template":componente.outerHTML,
                 "data":data,
                 }
-            console.log("PPPPPPPPP",data,name)
         """
         self.render_uuid=uuidv4()
 
@@ -1261,7 +1572,7 @@ class App:
                 if model!=undefined:
                     name=nodo.getAttribute("name")
                     
-                    value=eval("(function(){"+f"let self=this;let $stores=self.$stores;console.log('44444444444 ',{model}) return {model}"+"})").call(context)
+                    value=eval("(function(){"+f"let self=this;let $stores=self.$stores; return {model}"+"})").call(context)
                     data[name]=value
                 nodo._model=True
                 nodo.removeAttribute("f-model")
@@ -1289,13 +1600,13 @@ class App:
             
 
 
-    def update(self,context,nodo,template,field=None,value=None):
+    def update(self,context,nodo,template,field=None,value=None,refresh=False):
         """
         Vuelve a Dibujar los componentes, cargando el contexto actual en lugar
         de resetear el contexto
         """
         that=self
-
+        console.log("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT")
 
         if nodo.idx==undefined:
             nodo.idx=1
@@ -1313,55 +1624,69 @@ class App:
         finit=doc.children[0].getAttribute("f-init")
 
         #nodo.innerHTML=tpl.innerHTML
-        def travese2(nodo,nodo2):
+        async def travese2(nodo,nodo2,context,idx,localdata={},lock=False,condition={}):
             if len(nodo.childNodes)==len(nodo2.childNodes):
                 
                 
                 if nodo2.childNodes==0:
                     if nodo.__proto__.constructor.name=="Text":
-                        nodo.nodeValue=nodo2.nodeValue
+                        #nodo.nodeValue=nodo2.nodeValue
+                        nodo2.nodeValue=reemplazarValores(nodo2.nodeValue,Object.assign({},
+                            context["__data__"],localdata))
+
                     else:
-                        nodo.innerHTML=nodo2.innerHTML
-                        #console.log("oooooooo",nodo,nodo2)
+                        #nodo.innerHTML=nodo2.innerHTML
+                        nodo.innerHTML=reemplazarValores(nodo.innerHTML,Object.assign({},context["__data__"],localdata))
+
+                        process_attr(that,nodo,context,idx,localdata,lock,condition)
+                        setTimeout(
+                                lambda :explore(that,nodo,nodo.parentNode,context,localdata),
+                                500)
                 else:
                     k=0
                     for n2 in nodo2.childNodes:
                         n=nodo.childNodes[k]
                         
-                        if n and n._model:
-                            pass
-                        elif n and n._render:
+                        if n :
                             
                             if n.__proto__.constructor.name=="Text":
                                 n.nodeValue=n2.nodeValue
-                            else:
-                                """
-                                if len(n.childNodes)>0:
-                                    travese2(n,n2)
-                                else:
-                                """
-                                n.outerHTML=n2.outerHTML
-
+                            elif n.__proto__.constructor.name!="Comment":
+                                
+                                if not process_if(that,n2,context,localdata,lock,condition):
+                                    n.outerHTML=n2.outerHTML
 
                         elif n and n._for:
                             n.outerHTML=n2.outerHTML
-                            #console.log("aaaaaa",nodo,nodo2)
+                            
+                            process_attr(that,n,context,idx,localdata,lock,condition)
+                            setTimeout(
+                                lambda :explore(that,n,nodo,context,localdata),
+                                500)
+                            
+
                         else:
                             if n:
 
-                                travese2(
+                                await travese2(
                                     n,
                                     n2)
 
-                        
-                        
                         k+=1
+                    for n in nodo.childNodes:
+                        if n.__proto__.constructor.name!="Text"  and n.__proto__.constructor.name!="Comment":
+                            
+                            process_attr(that,n,context,idx,localdata,lock,condition)
                 
             else:
 
                 nodo.innerHTML=nodo2.innerHTML
-        
-        travese2(nodo,tpl.content.children[0])
+                for n in nodo.childNodes:
+                    if n.__proto__.constructor.name!="Text"  and n.__proto__.constructor.name!="Comment":
+                        process_attr(that,n,context,idx,localdata,lock,condition)
+                        explore(that,n,nodo,context,localdata)
+
+        travese2(nodo,tpl.content.children[0],context,idx,localdata,False)
 
         localdata={}
         process_api(that,nodo,context,localdata,doc.children[0])
@@ -1381,9 +1706,11 @@ class App:
         for node in ifs:
             #conditions[k]=[]
         """
+
+        """
         for node2 in nodo.children:
             travese(self,node2,context,idx,localdata,False)
-
+        """
                     
 
 
