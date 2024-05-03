@@ -33,7 +33,7 @@
 	<!-- use permite usar los modulos importados por link bajo el grupo de namespace -->
 	<f-widget
 		use="modulos"
-		f-data='{"product":"","condicion":true,"elementos":[1,2,3,4]}'
+		f-data='{"product":"","texto":"","condicion":true,"elementos":[1,2,3,4]}'
 	>
 		<f-component></f-component>
 		<f-if :condition="this.condicion">
@@ -44,17 +44,19 @@
 			f-data='{"otra cosa":""}'
 		>
 		</f-widget>
-		<span :style="{'background-color':this.condicion?'red':'blue'}">hola mundo</span>
-		
+		<span :style="{'background-color':this.condicion?'red':'blue'}">{{this.condicion?'red':'blue'}}</span>
+		<span>{{texto}}</span>
 		
 		<f-else>
 			Desactivado
 		</f-else>
-
+		<input id="mobileno" type="text" name="" 
+				f-model="texto"/>
 		<f-for :elemento="self.elementos">
-			<h1 @click="(event)=>{ alert(elemento) }">
-				<input id="mobileno" type="text" name=""/>
-			</h1>
+			<div >
+				<input id="mobileno" type="text" name="" 
+				f-model="texto"/>
+			</div>
 		</f-for>
 
 		<button
@@ -72,7 +74,9 @@
  	que no se listara los subfor al documento queryselector 
  	y igual con los f-if f-elif y f-else 
  	*/
-
+ 	let HTMLTAGS=[
+		"DIV","SPAN","H1","H4","BUTTON","INPUT"
+	]
  	function dynamic_attr(valor){
 		let accept=[]
             
@@ -83,13 +87,11 @@
             accept.push(valor)
         }
         else{
-        	console.log("%%%%%%%%%",Array.isArray(valor))
             if (Array.isArray(valor)){
 	            for (let elem in valor){
 
 	                if (typeof(elem)=="object"){
 	                    for (let attr of elem){
-	                    	console.log(">>>>>>>>>>>> ",typeof(elem[attr]))
 	                    	if (typeof(elem[attr])=='boolean'){
 	                    		if (elem[attr]){
 		                            accept.push(attr)
@@ -110,15 +112,12 @@
 				}
 			}
 			else{
-				console.log("VVVVVVV",valor)
 				for (let elem in valor){
-					console.log("AAAAAA",elem)
 					if (typeof(valor[elem])=='boolean'){
 						accept.push(elem)
 					}else{
 						accept.push(elem+":"+valor[elem]+";")
 					}
-					console.log("dddddscccccccc ",)
 				}
 			}
 		}
@@ -144,37 +143,51 @@
 	        function set_func(value){
 
 	            cadena=""
-	            console.log("UUUUUUU ",name,value,widget.nodes)
 	            data[name]=value
+	            console.log("++++++++",widget.nodes,name,context)
 	            for (let node of widget.nodes[name]){
 	            	let nodo=node[0]
 	            	let directiva=node[1]
 	            	let code=node[2]
 	            	let parent=node[3]
-	            	if (["DIV","SPAN","H1"].includes(nodo.tagName)){
-	            		// atributos span normales
-	            		let cadena=""
-						for (let elem in data["__data__"]){
-							cadena+=`let ${elem}=data['${elem}'];`;
-							
-						}
-	            		let result=eval("(function(){"+cadena+";return ("+code+")})").call(context)
-	            		let _valor=dynamic_attr(result)
-	            		console.log("&&&&&&&&&",_valor,value,result,context)
-	            		nodo.setAttribute(
-	            			directiva.slice(1,),
-	            			_valor
-	            			)
+	            	let cadena=""
+					for (let elem in data){
+						cadena+=`let ${elem}=data['${elem}'];`;
+						
+					}
+					
+	            	if (nodo.__proto__.constructor.name!="Text" && 
+	            		nodo.__proto__.constructor.name!="Comment"){
+	            		if (HTMLTAGS.includes(nodo.tagName)){
+		            		// atributos span normales
+		            		if (directiva==null){
+		            			console.log("WWWWWWW ","(function(){"+cadena+";return ("+code.slice(2,-2)+")})")
+		            			let result=eval("(function(){"+cadena+";return ("+code.slice(2,-2)+")})").call(context)
+		            			nodo.innerHTML=result
+		            		}else{
+		            			let result=eval("(function(){"+cadena+";return ("+code+")})").call(context)
+		            			let _valor=dynamic_attr(result)
+			            		nodo.setAttribute(
+			            			directiva.slice(1,),
+			            			_valor
+			            			)
+
+
+		            		}
+		            		
+		            		
+		            	}
+		            	else{
+		            		//custom elements
+		            		console.log("Sssss",[nodo])
+		            		nodo.render()
+		            	}
 	            	}
-	            	else{
-	            		//custom elements
-	            		nodo.render()
-
-
+	            else{
+	            	let result=reemplazarValores(code,data)
+	            	console.log("wwwwww ",node,result,data)
+	            	nodo.nodeValue=result
 	            	}
-	            
-
-
 	            }
 	        }
 	 		
@@ -197,9 +210,10 @@
 	    let response
 	    
     	function reemplazo(match, p1){
-    		
+    		console.log("kkkkkk ",cadena)
 	        clave = p1.trim();
-	        if (clave.indexOf(".")>-1){
+	        if (clave.indexOf(".")>-1 && clave.indexOf("?")==-1){
+	        	console.log("EEEEEEEEEEEEEEEEE",cadena)
 	            response=datos
 
 	            for (let elem of clave.split(".")){
@@ -214,13 +228,21 @@
 	                
 	            return response
 	         }
-	        else if(clave.indexOf("[")>-1){
-	        	clave=clave.strip()
-	            result=eval("const { "+",".join(datos.keys())+" } = datos; "+clave)
+	        else if(clave.indexOf("[")>-1 || clave.indexOf("?")>-1 || clave.indexOf(":")>-1){
+	        	clave=clave.trim()
+	        	console.log("*********************",cadena,clave)
+	        	let cadena2=""
+				for (let elem in datos){
+					cadena2+=`let ${elem}=datos['${elem}'];`;
+					
+				}
+			
+	            result=eval("(function(){"+cadena2+";return "+clave+"})").call(datos)
 	            return result
 	        }
 	            
 	        else{
+	        	console.log("mmmm",cadena,clave,datos)
 	        	response=datos[clave]
 	        }
 	        
@@ -252,25 +274,75 @@
 	}
 	function travese(nodo,data,localdata,root=null){
 		nodo.root=root
+		for (let elem of nodo.childNodes){
+			if (elem.__proto__.constructor.name=="Text"){
+				elem._value=elem.nodeValue
+				elem.nodeValue=reemplazarValores(elem.nodeValue,data["__data__"])
+				for (let key in data["__data__"]){
+					if (elem._value.includes(key)){
+						if (root.nodes[key]){
+							root.nodes[key].push(
+									[elem,null,elem._value,elem.parentNode]
+								)
+							
+						}
+						else{
+							root.nodes[key]=[
+									[elem,null,elem._value,elem.parentNode]
+								]
+							
+							
+						}
+						
+					}
+				}
+			
+			}
+			
+					
+		}
 		for (let elem of nodo.children){
 			if (root){
 				elem.root=root
 			}
 			let is_custom=false;
-			if ([
-				"DIV","SPAN","H1","H4","BUTTON","INPUT"
-				].includes(elem.tagName)
+			if (HTMLTAGS.includes(elem.tagName)
 				){
 
 			}
 			else{
-				console.log("wwww",[elem])
 				is_custom=true
 				elem.render()
 			}
-
+			console.log("yyyyy",elem)
+			if (elem.children.length==0){
+				if (elem.innerHTML.indexOf("{{")>-1 && elem.innerHTML.indexOf("}}")>-1){
+					elem._value=elem.innerHTML
+					elem.innerHTML=reemplazarValores(elem._value,data["__data__"])
+					for (let key in data["__data__"]){
+						if (elem._value.includes(key)){
+							if (root.nodes[key]){
+								root.nodes[key].push(
+										[elem,null,elem._value,elem.parentNode]
+									)
+								
+							}
+							else{
+								root.nodes[key]=[
+										[elem,null,elem._value,elem.parentNode]
+									]
+								
+								
+							}
+							
+						}
+					}
+				}
+				
+			}
 
 			for (let attr of elem.attributes){
+
 				if (attr.name.startsWith(":")){
 					for (let key in data["__data__"]){
 						if (attr.value.includes(key)){
@@ -306,7 +378,6 @@
 					
 					
 					if (!is_custom){
-						console.log("ZZZZZZZZZZ",attr.value)
 						let valor=eval("("+attr.value+")")
 						valor=dynamic_attr(valor)		
 						elem.setAttribute(attr.name.slice(1,),valor)
@@ -317,12 +388,47 @@
 					
 					//elem.removeAttribute(attr.name)
 				}
+				if (attr.name=="f-model"){
+					console.log("SSSSSS",elem)
+					function build(context,localdata){
+						return function(event){
+							let code=event.target.getAttribute(attr.name)
+							
+							let cadena=""
+							for (let elem in data["__data__"]){
+								cadena+=`let ${elem}=data['${elem}'];`;
+								
+							}
+							for (let elem in localdata){
+								cadena+=`let ${elem}=localdata['${elem}'];`;
+								
+							}
+							console.log("DDDDDDDDDDDDDDDDD")
+							c=context
+							if (attr.value.indexOf(".")>-1){
+								map=attr.value.split(".")
+								for (let elem of map.slice(0,-1)){
+									c=c[elem]
+								}
+								c[map[-1]]=event.currentTarget.value
+								context[map[0]]=context[map[0]]
+							}else{
+								context[attr.value]=event.currentTarget.value
+							}
+							
+
+							console.log("EJECUTANDO2",event.target)
+
+						}
+					}
+					let fn=build(data,localdata)
+					elem.addEventListener("keyup",fn)
+				}
 				if (attr.name.startsWith("@")){
 					function build(context,localdata){
 						return function(event){
 							let code=event.target.getAttribute(attr.name)
 							
-							console.log("xxxx",data,localdata)
 							let cadena=""
 							for (let elem in data["__data__"]){
 								cadena+=`let ${elem}=data['${elem}'];`;
@@ -339,18 +445,26 @@
 						}
 					}
 					let fn=build(data,localdata)
-					console.log("$$$$$$$$$$$$$$$$$$$$4",nodo,attr.name,elem)
 					elem.addEventListener(attr.name.slice(1,),fn)
 				}
+			
+			
+			}
+			console.log("ffffff",is_custom,elem)
 			if (!is_custom){
 				travese(elem,data,localdata,root)
-			}
-			
 			}
 		}
 	}
 	function updater(nodo,data,localdata,root=null){
 		nodo.root=root
+		console.log("UUUUUUUUUUUUUUUUU",nodo)
+		for (let elem of nodo.childNodes){
+			if (elem.__proto__.constructor.name=="Text"){
+				console.log("WWWWWWWW ",elem._value)
+				elem.nodeValue=reemplazarValores(elem._value,data["__data__"])
+			}
+		}
 		for (let elem of nodo.children){
 			if (root){
 				elem.root=root
@@ -363,7 +477,6 @@
 
 			}
 			else{
-				console.log("wwww",[elem])
 				is_custom=true
 				elem.render()
 			}
@@ -425,7 +538,6 @@
 	class HolaMundo extends HTMLElement{
 		constructor(){
 			super()
-			console.log("iiiiii")
 		}
 		connectedCallback(){
 			this.innerHTML="<H1>Hola Mundo con un web Component</H1>"
@@ -435,11 +547,9 @@
 	class FComponent extends HTMLElement{
 		constructor(){
 			super()
-			console.log("eeeeeee")
 
 		}
 		connectedCallback(){
-			console.log("SSSSSSSSSSS")
 			this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
 		}
 		render(){
@@ -455,7 +565,7 @@
 				this.data=data
 				this.nodes={}
 				this.context=build_context(this,this.data)
-				console.log("PPPPPP ",this.data)
+
 			}
 
 
@@ -464,7 +574,6 @@
 		connectedCallback(){
 			//this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
 			travese(this,this.context,{},this)
-			console.log(">>>>>>",this,this.root)
 
 
 			
@@ -508,7 +617,6 @@
 			}
 			let valid=eval("(function(){"+cadena+";return "+this.condition+"})").call(this.root.context)
 
-			console.log("qqqqqq ",valid,this.condition,this.parentNode)
 			this.parent.condition=valid
 			if (this.parentNode==undefined){
 				//significa que hemos comprobado la condicion anterior mente
@@ -538,7 +646,6 @@
 	class FElse extends HTMLElement{
 		constructor(){
 			super()
-			console.log("eeeeeee2",this.innerHTML)
 			this.template=this.innerHTML
 			this.parent=this.parentNode
 		}
@@ -548,7 +655,6 @@
 			}
 		}
 		render(){
-			console.log("KKKKKKKKKKKKKKKK",this.parent.condition,this.parent)
 			if (this.parent.condition){
 				this.remove()
 			}
@@ -560,9 +666,7 @@
 	}
 	class FFor extends HTMLElement{
 		constructor(){
-			console.log("TTTTTTTTTTTTTT")
 			super()
-			console.log("eeeeeee3",this.innerHTML,this.root)
 			this.template=this.innerHTML
 			this.parent=this.parentNode
 			this.mounted=false
@@ -577,12 +681,9 @@
 
 		}
 		render(){
-			console.log("dddd",this.root.data)
-			console.log(this.innerHTML)
 			let iterable={}
 			let valor=null
 			let name=null
-			console.log("xxxxx ",this.attributes)
 			for (let attr of this.attributes){
 
 				if (attr.name.startsWith(":")){
@@ -590,9 +691,8 @@
 							&& attr.name!=":class" 
 							&& attr.name!=":style"
 							&& attr.name!=":key"){
-							console.log("fffff",attr.value)
 							valor=eval("((self)=>{ return "+attr.value+"})").call(null,this.root.data)
-							console.log("TTTTT",valor)
+							
 							name=attr.name.slice(1,)
 
 							break
@@ -601,12 +701,9 @@
 				}
 				
 			}
-			console.log("rrr")
 			let template=this.innerHTML
-			console.log("sssss ",valor)
 			this.innerHTML=""
 			for (let elem in valor){
-				console.log("BBBBBBBBBBBB")
 				if (typeof(elem)!="object"){
 					eval("let "+name+`=${elem}`)
 				}
@@ -620,12 +717,12 @@
 				let node_template=document.createElement("template")
 				
 				node_template.innerHTML=template_temp
-				console.log(node_template,this.mounted)
 				
 				if (this.mounted){
 					updater(node_template.content,this.root.context,d)
 				}
 				else{
+					console.log("HHHHHHHHHHHHHHHHHHH")
 					travese(node_template.content,this.root.context,d)
 					
 				}
