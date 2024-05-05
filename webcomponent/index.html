@@ -9,16 +9,18 @@
 <body>
 	<template 
 		name="componente"
-		f-data='{"product":"","condicion":false,"elementos":[1,2,3,4]}'
+		f-data='{"product":"","condicion":false,"elementos":[1,2,3,5]}'
 	>
-		<head>
-			<link 
+	
+		<link 
 			rel="import"
 			namespace="modulos" 
-			src="https://componentes/tarjeta.html">
+			src="https://componentes/tarjeta.html"/>
+		<style type="text/css">
+			
+		</style>
 		
-		</head>
-		<body>
+		<div>
 			<f-if :condition="this.condicion">
 		 		<button onclick="establecer($id)"></button>
 		 	</f-if>
@@ -26,9 +28,9 @@
 		 		
 		 	</f-else>
 			<f-for :elemento="this.elementos" > 
-				<li >{{elemento}}</li>
+				<li ><span>Hola: </span><span>{{elemento}}</span></li>
 			</f-for>	
-		</body>
+		</div>
 		<script >
 			export default class Component {
 
@@ -38,7 +40,7 @@
 	<!-- use permite usar los modulos importados por link bajo el grupo de namespace -->
 	<f-widget
 		use="modulos"
-		f-data='{"product":"","texto":"","condicion":false,"elementos":[1,2,3,4],
+		f-data='{"product":"","texto":"","condicion":false,"elementos":[1,2,3,14],
 		"elementos2":[
 			{"name":"algo","children":[{"name":"pero"},{"name":"aaa"}]},
 			{"name":"algo2","children":[{"name":"pero2"}]},
@@ -78,7 +80,8 @@
 				</f-for>
 			</div>
 		</f-for>
-  <button id="boton3" 
+	<span>{{elementos}}</span>
+	<button id="boton3" 
             @click="(event) =>{
             	this.elementos2[0].children.push({'name':'nuevo dinamico','children':[]})
             	this.elementos2=this.elementos2;
@@ -90,6 +93,16 @@
 		>
 			Hacer click
 		</button>
+		<button
+			@click="(event) => { 
+				this.elementos.push(this.elementos.length+1)
+				this.elementos=this.elementos
+			 }"
+		>
+			Hacer click
+		</button>
+
+		<f-componente f-model:elementos="elementos"></f-componente>
 
 	</f-widget>
 
@@ -101,7 +114,7 @@
  	y igual con los f-if f-elif y f-else 
  	*/
  	let HTMLTAGS=[
-		"DIV","SPAN","H1","H4","BUTTON","INPUT"
+		"DIV","SPAN","H1","H4","BUTTON","INPUT","PRE"
 	]
  	function dynamic_attr(valor){
 		let accept=[]
@@ -152,7 +165,7 @@
 		return _valor
  	}
 
- 	function build_context(widget,data){
+ 	function build_context(widget,data,parentContext){
  		/*
  		Los contextos se encargan de actualizar los valores de los atributos de las directivas de sus elementos hijos
  		*/
@@ -208,6 +221,7 @@
 		            		//custom elements
 		            		let d={}
 		            		d[name]=value
+		            		console.log("MMMMMMM",nodo,d)
 		            		nodo.render(d)
 		            		if (nodo.__proto__.constructor.name=="FIf"){
 		            			nodo.process()
@@ -218,6 +232,21 @@
 	            else{
 	            	let result=reemplazarValores(code,data)
 	            	nodo.nodeValue=result
+	            	}
+	            }
+
+	            for (let elem of widget.subcomponents){
+	            	let reconect=false
+	            	for (let model in elem.f_models){
+	            		let parent=elem.f_models[model]
+	            		if (parent==name){
+	            			reconect=true
+	            			break
+	            		}
+	            	}
+	            	if (reconect){
+	            		elem.connectedCallback()
+	            	
 	            	}
 	            }
 
@@ -350,6 +379,7 @@
 		}
 		let fif_node
 		for (let elem of nodo.children){
+
 			if (elem.processed){
 				continue
 			}
@@ -369,7 +399,6 @@
 			}
 			
 
-
 			if (root){
 				elem.root=root
 			}
@@ -381,15 +410,18 @@
 			else if (elem.render){
 				is_custom=true
 				if (!elem.rendered){
+					
 					elem.render(localdata)
 
 				}	
 				
 
-			}else{
+			}else if(elem.comp){
+				is_custom=true
 			}
 			
 			if (elem.children.length==0){
+			
 				let template
 				if (elem._value){
 					template=elem._value
@@ -437,6 +469,7 @@
 						}
 					}
 				}
+
 				
 			}
 			let cadena=""
@@ -547,6 +580,15 @@
 					let fn=build(data,localdata)
 					elem.addEventListener("keyup",fn)
 					elem.processed=true
+				}
+				else if(attr.name.startsWith("f-model:")){
+					let name=attr.name.replace("f-model:","")
+					/*Asumiremos que es un custom component igualmente*/
+					elem.f_context=data
+					elem.f_localdata=localdata
+					let models={}
+					models[name]=attr.value
+					elem.f_models=models
 				}
 				if (attr.name.startsWith("@")){
 					function build(context,localdata){
@@ -689,6 +731,7 @@
 	class FWidget extends HTMLElement{
 		constructor(){
 			super()
+			this.subcomponents=[]
 			if (this.getAttribute("f-data")){
 				let data=eval("("+this.getAttribute("f-data")+")")
 				this.data=data
@@ -939,46 +982,116 @@
 	}
 
 	window.customElements.define("hola-mundo",HolaMundo)
-	window.customElements.define("f-component",FComponent)
+	//window.customElements.define("f-component",FComponent)
 	window.customElements.define("f-for",FFor)
 	window.customElements.define("f-if",FIf)
 	window.customElements.define("f-else",FElse)
 	window.customElements.define("f-widget",FWidget)
-	for (let nodo of document.querySelectoAll("template")){
+	console.log("aaaaaa",document.querySelectorAll("template"))
+	for (let nodo of document.querySelectorAll("template")){
 		
 		// head
 		// body
 		// script
-		if (nodo.content.body){
-			let name=nodo.getAttribute("name")
+		console.log("zzzzzzzzz",[nodo])
+		let content=null
+		let links=[]
+		let script=null
+		let style=null
+		for (let elem of nodo.content.children){
+			if (elem.__proto__.constructor.name!="HTMLLinkElement" 
+				&& elem.__proto__.constructor.name!="HTMLScriptElement"
+				&& elem.__proto__.constructor.name!="HTMLStyleElement"){
+				content=elem
+				
+			}else if (elem.__proto__.constructor.name=="HTMLStyleElement"){
+				style=elem
+			}else if (elem.__proto__.constructor.name=="HTMLScriptElement"){
+				script=elem
+			}else if (elem.__proto__.constructor.name=="HTMLLinkElement"){
+				links.push(elem)
+			}
+
+
+		}
+		let name=nodo.getAttribute("name")
+		if (script){
 			
+			//encontraria el nombre del componente
+			let pattern=new RegExp("export\\s+default\\s+class\\s+(\\w+)")
+			
+			match=script.innerHTML.match(pattern)
+
+			let code=script.innerHTML.replace("export default","")
+
+			let Comp=eval("(function(){"+code+"; return "+match[1]+"})").call()
+	
+
 			class Component extends HTMLElement{
 				constructor(){
 					super()
-					this.template=nodo.content.body.innerHTML
+					console.log("HHHHHH", this.f_context)
+					if (nodo.getAttribute("f-data")){
+						let data=eval("("+nodo.getAttribute("f-data")+")")
+						this.data=data
+						this.nodes={}
+						this.context=build_context(this,this.data,this.f_context)
+						this.ifs=[]
+
+					}
+					console.log("lllllll ",nodo,this.data)
+					this.template=content.innerHTML
+					
 					this.parent=this.parentNode
 					this.mounted=false
-					this.comp=Comp(this)
+					this.comp=new Comp(this)
+					this.root.subcomponents.push(this)
+
+					
+					console.log("HHHHHH", this.f_models)
+
 				}
 				connectedCallback(){
-					
-
+					this.innerHTML=this.template
 					//this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
-					this.comp.connectedCallback()
+					if (this.comp.connectedCallback){
+						this.comp.connectedCallback()
+
+					}
+					for (let elem in this.f_models){
+						let parent=this.f_models[elem]
+
+						console.log("ssss",this.data,this.f_context,parent)
+						if (parent){
+							this.context["__data__"][elem]=this.f_context[parent]
+						}
+						else{
+							this.context["__data__"][elem]=this.f_localdata[parent]
+
+						}
+						console.log("mmmmmm",this.context["__data__"],parent,this.f_localdata)
+						
+					}
+					travese(this,this.context,{},this)
+					
 				}
 				attributeChangedCallback(){
-					this.comp.attributeChangedCallback()
+					if (this.comp.attributeChangedCallback){
+						this.comp.attributeChangedCallback()
+					}
+					
 				}
 				render(localdata={}){
-					this.comp.render(localdata)
+					console.log("FFFFFFFFFFFFFFFF",localdata)
+					if (this.comp.render){
+						this.comp.render(localdata)
+					}
+					
 				}
 
 			}
-			//encontraria el nombre del componente
-			let pattern=new RegExp("export\s+default\s+class\s+(\w+)")
 			
-			nodo.content.script.innerHTML.match(pattern)
-
+			console.log("VVVVVVVVVV ","f-"+name)
 			window.customElements.define("f-"+name,Component)
 		}
 
