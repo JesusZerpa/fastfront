@@ -7,8 +7,9 @@
 
 </head>
 <body>
-	<template name="componente"
-		f-data='{"product":"","condicion":true,"elementos":[1,2,3,4]}'
+	<template 
+		name="componente"
+		f-data='{"product":"","condicion":false,"elementos":[1,2,3,4]}'
 	>
 		<head>
 			<link 
@@ -24,21 +25,28 @@
 		 	<f-else>
 		 		
 		 	</f-else>
-			<f-for :elemento="self.elementos" > 
+			<f-for :elemento="this.elementos" > 
 				<li >{{elemento}}</li>
 			</f-for>	
 		</body>
-		
+		<script >
+			export default class Component {
+
+			}
+		</script>
 	</template>
 	<!-- use permite usar los modulos importados por link bajo el grupo de namespace -->
 	<f-widget
 		use="modulos"
-		f-data='{"product":"","texto":"","condicion":true,"elementos":[1,2,3,4]}'
+		f-data='{"product":"","texto":"","condicion":false,"elementos":[1,2,3,4],
+		"elementos2":[
+			{"name":"algo","children":[{"name":"pero"},{"name":"aaa"}]},
+			{"name":"algo2","children":[{"name":"pero2"}]},
+			{"name":"algo3","children":[{"name":"pero3"}]},
+		]}'
 	>
 		<f-component></f-component>
-		<f-if :condition="this.condicion">
-			Activado
-		</f-if>
+		
 		<f-widget
 			use="modulos"
 			f-data='{"otra cosa":""}'
@@ -47,20 +55,38 @@
 		<span :style="{'background-color':this.condicion?'red':'blue'}">{{this.condicion?'red':'blue'}}</span>
 		<span>{{texto}}</span>
 		
-		<f-else>
-			Desactivado
-		</f-else>
+		
 		<input id="mobileno" type="text" name="" 
 				f-model="texto"/>
-		<f-for :elemento="self.elementos">
+		<pre>{{elementos2}}</pre>
+		<f-for :elemento="this.elementos2">
 			<div >
-				<input id="mobileno" type="text" name="" 
-				f-model="texto"/>
+				<span>{{elemento.name}}</span>
+				<span>{{elemento}}</span>
+				<f-if :condition="this.condicion">
+					Activado
+				</f-if>
+				<f-else>
+					Desactivado
+				</f-else>
+			
+				<f-for :elemento2="elemento.children" style="display: block;margin-left: 10px !important;">
+					<div :style="{'background-color':this.condicion?'red':'blue'}">
+						<span>{{elemento2.name}}</span>
+						<button @click="(event)=>{ alert(elemento2.name)}">Presiona</button>
+					</div>
+				</f-for>
 			</div>
 		</f-for>
-
+  <button id="boton3" 
+            @click="(event) =>{
+            	this.elementos2[0].children.push({'name':'nuevo dinamico','children':[]})
+            	this.elementos2=this.elementos2;
+            	console.log('ccccccccccccccc',this.elementos2)
+            }">Presiona</button>
+        
 		<button
-			@click="(event) => { console.log('oooo',this);this.condicion=!this.condicion }"
+			@click="(event) => { this.condicion=!this.condicion }"
 		>
 			Hacer click
 		</button>
@@ -144,7 +170,9 @@
 
 	            cadena=""
 	            data[name]=value
-	            console.log("++++++++",widget.nodes,name,context)
+	            if (!Object.keys(widget.nodes).includes(name)){
+	            	return
+	            }
 	            for (let node of widget.nodes[name]){
 	            	let nodo=node[0]
 	            	let directiva=node[1]
@@ -161,7 +189,6 @@
 	            		if (HTMLTAGS.includes(nodo.tagName)){
 		            		// atributos span normales
 		            		if (directiva==null){
-		            			console.log("WWWWWWW ","(function(){"+cadena+";return ("+code.slice(2,-2)+")})")
 		            			let result=eval("(function(){"+cadena+";return ("+code.slice(2,-2)+")})").call(context)
 		            			nodo.innerHTML=result
 		            		}else{
@@ -179,16 +206,21 @@
 		            	}
 		            	else{
 		            		//custom elements
-		            		console.log("Sssss",[nodo])
-		            		nodo.render()
+		            		let d={}
+		            		d[name]=value
+		            		nodo.render(d)
+		            		if (nodo.__proto__.constructor.name=="FIf"){
+		            			nodo.process()
+
+		            		}
 		            	}
 	            	}
 	            else{
 	            	let result=reemplazarValores(code,data)
-	            	console.log("wwwwww ",node,result,data)
 	            	nodo.nodeValue=result
 	            	}
 	            }
+
 	        }
 	 		
 	 		Object.defineProperty(context,name,{
@@ -210,10 +242,10 @@
 	    let response
 	    
     	function reemplazo(match, p1){
-    		console.log("kkkkkk ",cadena)
+
 	        clave = p1.trim();
 	        if (clave.indexOf(".")>-1 && clave.indexOf("?")==-1){
-	        	console.log("EEEEEEEEEEEEEEEEE",cadena)
+
 	            response=datos
 
 	            for (let elem of clave.split(".")){
@@ -230,7 +262,6 @@
 	         }
 	        else if(clave.indexOf("[")>-1 || clave.indexOf("?")>-1 || clave.indexOf(":")>-1){
 	        	clave=clave.trim()
-	        	console.log("*********************",cadena,clave)
 	        	let cadena2=""
 				for (let elem in datos){
 					cadena2+=`let ${elem}=datos['${elem}'];`;
@@ -242,7 +273,6 @@
 	        }
 	            
 	        else{
-	        	console.log("mmmm",cadena,clave,datos)
 	        	response=datos[clave]
 	        }
 	        
@@ -274,26 +304,43 @@
 	}
 	function travese(nodo,data,localdata,root=null){
 		nodo.root=root
+		let data2=Object.assign({},data["__data__"],localdata)
+					
 		for (let elem of nodo.childNodes){
 			if (elem.__proto__.constructor.name=="Text"){
 				elem._value=elem.nodeValue
 				elem.nodeValue=reemplazarValores(elem.nodeValue,data["__data__"])
-				for (let key in data["__data__"]){
-					if (elem._value.includes(key)){
-						if (root.nodes[key]){
-							root.nodes[key].push(
-									[elem,null,elem._value,elem.parentNode]
-								)
+				for (let key in data2){
+					if (elem._value){//este condicional es para evitar procesar cadenas vacias
+						let nombreVariableRegex = new RegExp( key + "\\b");
+
+						if (nombreVariableRegex.test(elem._value)){
+							if (root.nodes[key]){
+								let valid=true
+								for (let n of root.nodes[key]){
+
+									if (n[0]==elem ){
+										valid=false
+										break
+									}
+								}
+								if (valid){
+									root.nodes[key].push(
+										[elem,null,elem._value,elem.parentNode]
+									)
+								}
+								
+								
+							}
+							else{
+								root.nodes[key]=[
+										[elem,null,elem._value,elem.parentNode]
+									]
+								
+								
+							}
 							
 						}
-						else{
-							root.nodes[key]=[
-									[elem,null,elem._value,elem.parentNode]
-								]
-							
-							
-						}
-						
 					}
 				}
 			
@@ -301,7 +348,28 @@
 			
 					
 		}
+		let fif_node
 		for (let elem of nodo.children){
+			if (elem.processed){
+				continue
+			}
+			if (elem.__proto__.constructor.name=="FIf"){
+				if (!root.ifs.includes(elem)){
+					root.ifs.push(elem)
+				}
+				
+				fif_node=elem
+			}
+			if (elem.__proto__.constructor.name=="FELif"){
+				fif_node.group.push(elem)
+			}
+
+			if (elem.__proto__.constructor.name=="FElse"){
+				fif_node.else=elem
+			}
+			
+
+
 			if (root){
 				elem.root=root
 			}
@@ -310,21 +378,52 @@
 				){
 
 			}
-			else{
+			else if (elem.render){
 				is_custom=true
-				elem.render()
+				if (!elem.rendered){
+					elem.render(localdata)
+
+				}	
+				
+
+			}else{
 			}
-			console.log("yyyyy",elem)
+			
 			if (elem.children.length==0){
-				if (elem.innerHTML.indexOf("{{")>-1 && elem.innerHTML.indexOf("}}")>-1){
-					elem._value=elem.innerHTML
-					elem.innerHTML=reemplazarValores(elem._value,data["__data__"])
-					for (let key in data["__data__"]){
-						if (elem._value.includes(key)){
+				let template
+				if (elem._value){
+					template=elem._value
+				}else{
+					template=elem.innerHTML
+				}
+				if (!elem._value &&template.indexOf("{{")>-1 && template.indexOf("}}")>-1){
+
+					elem._value=template
+					
+					let compiled=reemplazarValores(elem._value,
+						data2)
+					
+					elem.innerHTML=compiled
+					
+					for (let key in data2){
+						var nombreVariableRegex = new RegExp( key + "\\b");
+						
+						if (root && nombreVariableRegex.test(elem._value)){
 							if (root.nodes[key]){
-								root.nodes[key].push(
+								let valid=true
+								for (let n of root.nodes[key]){
+
+									if (n[0]==elem ){
+										valid=false
+										break
+									}
+								}
+								if (valid){
+									root.nodes[key].push(
 										[elem,null,elem._value,elem.parentNode]
 									)
+								}
+
 								
 							}
 							else{
@@ -340,22 +439,53 @@
 				}
 				
 			}
-
+			let cadena=""
+			for (let elem in localdata){
+				cadena+=`let ${elem}=localdata['${elem}'];`;
+				
+			}
+			for (let elem in data["__data__"]){
+				if (!Object.keys(localdata).includes(elem)){
+					cadena+=`let ${elem}=data['${elem}'];`;
+				}
+				
+				
+			}
 			for (let attr of elem.attributes){
 
 				if (attr.name.startsWith(":")){
+					
+					
 					for (let key in data["__data__"]){
-						if (attr.value.includes(key)){
+
+						var nombreVariableRegex = new RegExp( key + "\\b");
+						if (root && nombreVariableRegex.test(attr.value)){
 							if (root.nodes[key]){
+								let valid=true
+								for (let n of root.nodes[key]){
+							
+									if (n[0]==elem && n[1]==attr.name){
+										valid=false
+										break
+									}
+								}
 								if (is_custom){
-									root.nodes[key].push(
+									
+									
+									if (valid){
+										root.nodes[key].push(
 										[elem,attr.name,attr.value,elem.parent]
-									)
+										)
+									}
+									
 
 								}else{
-									root.nodes[key].push(
+								
+									if (valid){
+										root.nodes[key].push(
 										[elem,attr.name,attr.value,elem.parentNode]
-									)
+										)
+									}
 								}
 								
 							}
@@ -378,9 +508,12 @@
 					
 					
 					if (!is_custom){
-						let valor=eval("("+attr.value+")")
+						
+						let valor=eval("(function(localdata){"+cadena+";return "+attr.value+"})").call(data["__data__"],localdata)
+						
 						valor=dynamic_attr(valor)		
 						elem.setAttribute(attr.name.slice(1,),valor)
+						elem.processed=true
 				
 					}
 					
@@ -389,21 +522,11 @@
 					//elem.removeAttribute(attr.name)
 				}
 				if (attr.name=="f-model"){
-					console.log("SSSSSS",elem)
 					function build(context,localdata){
 						return function(event){
 							let code=event.target.getAttribute(attr.name)
 							
-							let cadena=""
-							for (let elem in data["__data__"]){
-								cadena+=`let ${elem}=data['${elem}'];`;
-								
-							}
-							for (let elem in localdata){
-								cadena+=`let ${elem}=localdata['${elem}'];`;
-								
-							}
-							console.log("DDDDDDDDDDDDDDDDD")
+							
 							c=context
 							if (attr.value.indexOf(".")>-1){
 								map=attr.value.split(".")
@@ -423,6 +546,7 @@
 					}
 					let fn=build(data,localdata)
 					elem.addEventListener("keyup",fn)
+					elem.processed=true
 				}
 				if (attr.name.startsWith("@")){
 					function build(context,localdata){
@@ -430,14 +554,19 @@
 							let code=event.target.getAttribute(attr.name)
 							
 							let cadena=""
-							for (let elem in data["__data__"]){
-								cadena+=`let ${elem}=data['${elem}'];`;
-								
-							}
 							for (let elem in localdata){
 								cadena+=`let ${elem}=localdata['${elem}'];`;
 								
 							}
+							for (let elem in data["__data__"]){
+								if (!Object.keys(localdata).includes(elem)){
+									cadena+=`let ${elem}=data['${elem}'];`;
+								}
+								
+									
+							}
+							
+
 							eval("(function(event,localdata){"+cadena+"("+code+")(event)})").call(data,event,localdata)
 
 							console.log("EJECUTANDO",event.target)
@@ -446,22 +575,19 @@
 					}
 					let fn=build(data,localdata)
 					elem.addEventListener(attr.name.slice(1,),fn)
+					elem.processed=true
 				}
 			
 			
 			}
-			console.log("ffffff",is_custom,elem)
-			if (!is_custom){
-				travese(elem,data,localdata,root)
-			}
+			travese(elem,data,localdata,root)
 		}
 	}
 	function updater(nodo,data,localdata,root=null){
 		nodo.root=root
-		console.log("UUUUUUUUUUUUUUUUU",nodo)
 		for (let elem of nodo.childNodes){
 			if (elem.__proto__.constructor.name=="Text"){
-				console.log("WWWWWWWW ",elem._value)
+
 				elem.nodeValue=reemplazarValores(elem._value,data["__data__"])
 			}
 		}
@@ -475,17 +601,20 @@
 				].includes(elem.tagName)
 				){
 
+
 			}
 			else{
 				is_custom=true
-				elem.render()
+				elem.render(localdata)
 			}
 
 
 			for (let attr of elem.attributes){
 				if (attr.name.startsWith(":")){
 					for (let key in data["__data__"]){
-						if (attr.value.includes(key)){
+						var nombreVariableRegex = new RegExp( key + "\\b");
+						
+						if (nombreVariableRegex.test(attr.value)){
 							if (root.nodes[key]){
 								if (is_custom){
 									root.nodes[key].push(
@@ -552,7 +681,7 @@
 		connectedCallback(){
 			this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
 		}
-		render(){
+		render(localdata={}){
 
 		}
 
@@ -565,6 +694,7 @@
 				this.data=data
 				this.nodes={}
 				this.context=build_context(this,this.data)
+				this.ifs=[]
 
 			}
 
@@ -574,12 +704,19 @@
 		connectedCallback(){
 			//this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
 			travese(this,this.context,{},this)
+			console.log("sssss",this.ifs)
+			for (let if_node of this.ifs){
+				if_node.clean()
+				if_node.process()
+			}
 
 
 			
 		}
-		render(){
-			updater(this,this.context,{},this)
+		render(localdata={}){
+			//Sub widgets
+			updater(this,this.context,localdata,this)
+			
 
 		}
 
@@ -592,7 +729,10 @@
 			this.condition=this.getAttribute(":condition")
 
 			this.parent=this.parentNode
+			this.current=this
+			this.group=[]
 			let start=false
+
 			for (let elem of this.parent.children){
 				if (elem==this){
 					start=true
@@ -609,33 +749,71 @@
 			
 			
 		}
-		render(){
+		render(localdata={}){
+			/*
+			this.localdata=localdata
+			console.log("uuuuu",localdata)
+			
+
+			
+			
+			this.root.ifs.push(this)
+
+			
+			console.log("zzzzzz",localdata)
+			
+		
+			this.rendered=true	
+			*/
+			
+		}
+		clean(){
+			for (let elem of this.parent.children){
+
+				if (elem.__proto__.constructor.name=="FElse" || elem.__proto__.constructor.name=="FElif"){
+
+					elem.parent.removeChild(elem)
+				}
+			}		
+
+		}
+		process(){
+			/*
+			Vamos a trabajar la eliminacion de los que no complen la condicion 
+			desde una funcion diferente y que sea lanzada por el root despues que termine de renderizar porque 
+			*/
+			console.log("QQQQQQQQQQQQQ")
 			let cadena=""
 			for (let elem in this.root.context["__data__"]){
 				cadena+=`let ${elem}=this['${elem}'];`;
 				
 			}
+
 			let valid=eval("(function(){"+cadena+";return "+this.condition+"})").call(this.root.context)
-
-			this.parent.condition=valid
-			if (this.parentNode==undefined){
-				//significa que hemos comprobado la condicion anterior mente
-				if (valid){
-					this.parent.appendChild(this)	
-				}
-
-			}
-			else{
-				if (!valid){
-					this.parentNode.removeChild(this)
-				}
-				else{
-					
-					this.parent.appendChild(this)
-				}
-			}
-			this.else.render()
 			
+			if (this.current && valid){
+				console.log("zzzzzz",this.current,this)
+				console.log("aaaa",this.parent)
+				this.parent.replaceChild(this,this.current)
+			}
+
+			if (!valid){
+				for (let elem of this.group){
+					if (elem.is_valid()){
+						valid=true
+						this.current=elem
+						this.parent.replaceChild(elem,this)
+						break
+					}
+				}
+			}
+			if (!valid){
+				this.current=this.else
+				this.parent.replaceChild(this.else,this)
+				
+			}
+
+			travese(this.current,this.root.context,this.localdata,this.root)
 		}
 	}
 	class FElif extends FIf{
@@ -654,13 +832,14 @@
 				this.parentNode.remove(this)
 			}
 		}
-		render(){
+		render(localdata={}){
 			if (this.parent.condition){
 				this.remove()
 			}
 			else if(this.parentNode==undefined){
 				this.parent.appendChild(this)
 			}
+			this.rendered=true	
 
 		}
 	}
@@ -680,10 +859,24 @@
 		attributeChangedCallback(){
 
 		}
-		render(){
+		render(localdata={}){
 			let iterable={}
 			let valor=null
 			let name=null
+			let cadena=""
+			for (let elem in localdata){
+				cadena+=`let ${elem}=localdata['${elem}'];`;
+				
+			}
+
+			for (let elem in this.root.context["__data__"]){
+				if (!Object.keys(localdata).includes(elem)){
+					cadena+=`let ${elem}=this['${elem}'];`;
+				}
+				
+				
+			}
+			
 			for (let attr of this.attributes){
 
 				if (attr.name.startsWith(":")){
@@ -691,7 +884,8 @@
 							&& attr.name!=":class" 
 							&& attr.name!=":style"
 							&& attr.name!=":key"){
-							valor=eval("((self)=>{ return "+attr.value+"})").call(null,this.root.data)
+							
+							valor=eval("(function(){"+cadena+";return "+attr.value+"})").call(this.root.data)
 							
 							name=attr.name.slice(1,)
 
@@ -701,43 +895,45 @@
 				}
 				
 			}
-			let template=this.innerHTML
+			let template=this.template
 			this.innerHTML=""
-			for (let elem in valor){
-				if (typeof(elem)!="object"){
-					eval("let "+name+`=${elem}`)
-				}
-				else{
-					eval("let "+name+"="+elem)
-				}
-				let d={}
-				d[name]=elem
+			let k=0
+			
+			if (valor){
+				for (let elem of valor){
+					if (typeof(elem)!="object"){
+						eval("let "+name+`=${elem}`)
+					}
+					else{
+						eval("let "+name+"=elem[k]")
+					}
+					let d=Object.assign({},localdata)
+					
+					d[name]=elem
 
-				let template_temp=reemplazarValores(template,d)
-				let node_template=document.createElement("template")
-				
-				node_template.innerHTML=template_temp
-				
-				if (this.mounted){
-					updater(node_template.content,this.root.context,d)
-				}
-				else{
-					console.log("HHHHHHHHHHHHHHHHHHH")
-					travese(node_template.content,this.root.context,d)
+					let template_temp=reemplazarValores(template,d)
+					let node_template=document.createElement("template")
+					
+					node_template.innerHTML=template
+					this.appendChild(node_template.content)
+					travese(this,this.root.context,d,this.root)
+					k+=1
+						
+						
+					
+					
+
+					
 					
 				}
-				
-
-				this.appendChild(node_template.content)
-				
+			}else if(valor==undefined){
+				console.error(`UndefinedValue: ${name}\n`,this,"\n",this.template)
 			}
+			
 			this.mounted=true
-			if (document.querySelector("input")){
-				console.log("FOCUS")
-				document.querySelector("input").focus()
-			}
 			
 			
+		this.rendered=true	
 		}
 
 	}
@@ -748,6 +944,45 @@
 	window.customElements.define("f-if",FIf)
 	window.customElements.define("f-else",FElse)
 	window.customElements.define("f-widget",FWidget)
+	for (let nodo of document.querySelectoAll("template")){
+		
+		// head
+		// body
+		// script
+		if (nodo.content.body){
+			let name=nodo.getAttribute("name")
+			
+			class Component extends HTMLElement{
+				constructor(){
+					super()
+					this.template=nodo.content.body.innerHTML
+					this.parent=this.parentNode
+					this.mounted=false
+					this.comp=Comp(this)
+				}
+				connectedCallback(){
+					
+
+					//this.outerHTML="<H1>Hola Mundo con un web Component</H1>"
+					this.comp.connectedCallback()
+				}
+				attributeChangedCallback(){
+					this.comp.attributeChangedCallback()
+				}
+				render(localdata={}){
+					this.comp.render(localdata)
+				}
+
+			}
+			//encontraria el nombre del componente
+			let pattern=new RegExp("export\s+default\s+class\s+(\w+)")
+			
+			nodo.content.script.innerHTML.match(pattern)
+
+			window.customElements.define("f-"+name,Component)
+		}
+
+	}
 
 </script>
 
